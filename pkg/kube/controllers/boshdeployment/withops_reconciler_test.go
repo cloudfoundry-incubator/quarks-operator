@@ -20,7 +20,6 @@ import (
 	"go.uber.org/zap/zaptest/observer"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
@@ -103,7 +102,7 @@ variables:
 		}
 
 		client = &fakes.FakeClient{}
-		client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+		client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
 			switch object := object.(type) {
 			case *bdv1.BOSHDeployment:
 				boshDeployment.DeepCopyInto(object)
@@ -136,7 +135,7 @@ variables:
 
 	Context("WithOps secret is recnociled", func() {
 		It("should create the desired manifest secret", func() {
-			client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
+			client.CreateCalls(func(context context.Context, object crc.Object, _ ...crc.CreateOption) error {
 				switch object := object.(type) {
 				case *corev1.Secret:
 					secret := object
@@ -151,7 +150,7 @@ variables:
 				return nil
 			})
 
-			result, err := reconciler.Reconcile(request)
+			result, err := reconciler.Reconcile(context.Background(), request)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(Equal(reconcile.Result{
 				Requeue: false,
@@ -161,7 +160,7 @@ variables:
 		It("should requeue after if quarks secret is not found", func() {
 			resolver.InterpolateVariableFromSecretsReturns([]byte("test"), errors.New("Expected to find variables: password"))
 
-			_, err := reconciler.Reconcile(request)
+			_, err := reconciler.Reconcile(context.Background(), request)
 			Expect(err).To(HaveOccurred())
 			Expect(logs.FilterMessageSnippet("Expected to find variables: password").Len()).To(Equal(1))
 		})

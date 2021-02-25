@@ -10,7 +10,6 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -56,10 +55,10 @@ var _ = Describe("ReconcileBDPL", func() {
 
 		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
 		reconcileRequest = func() {
-			result, err := jobreconciler.Reconcile(request)
+			result, err := jobreconciler.Reconcile(context.Background(), request)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(Equal(reconcile.Result{}))
-			result, err = reconciler.Reconcile(request)
+			result, err = reconciler.Reconcile(context.Background(), request)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(Equal(reconcile.Result{}))
 		}
@@ -71,7 +70,7 @@ var _ = Describe("ReconcileBDPL", func() {
 		status = &cfakes.FakeStatusWriter{}
 
 		client = &cfakes.FakeClient{}
-		client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+		client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
 			switch object := object.(type) {
 			case *qstsv1a1.QuarksStatefulSet:
 				desiredQStatefulSet.DeepCopyInto(object)
@@ -87,7 +86,7 @@ var _ = Describe("ReconcileBDPL", func() {
 			return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 		})
 
-		client.ListCalls(func(context context.Context, object runtime.Object, opts ...crc.ListOption) error {
+		client.ListCalls(func(context context.Context, object crc.ObjectList, opts ...crc.ListOption) error {
 			switch object := object.(type) {
 			case *qjv1a1.QuarksJobList:
 				list := &qjv1a1.QuarksJobList{Items: []qjv1a1.QuarksJob{*desiredQJob}}
@@ -152,7 +151,7 @@ var _ = Describe("ReconcileBDPL", func() {
 			Spec:   qjv1a1.QuarksJobSpec{},
 			Status: qjv1a1.QuarksJobStatus{Completed: false},
 		}
-		status.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOption) error {
+		status.UpdateCalls(func(context context.Context, object crc.Object, _ ...crc.UpdateOption) error {
 			switch bdplUpdate := object.(type) {
 			case *bdv1.BOSHDeployment:
 				bdpl = bdplUpdate
@@ -165,7 +164,7 @@ var _ = Describe("ReconcileBDPL", func() {
 	Context("BDPL is in 'converting' state", func() {
 		It("updates the BDPL Status", func() {
 
-			result, err := reconciler.Reconcile(request)
+			result, err := reconciler.Reconcile(context.Background(), request)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(Equal(reconcile.Result{}))
 
@@ -182,7 +181,7 @@ var _ = Describe("ReconcileBDPL", func() {
 		It("updates the bdpl status with the deployed state", func() {
 			desiredQStatefulSet.Status = qstsv1a1.QuarksStatefulSetStatus{Ready: true}
 
-			result, err := reconciler.Reconcile(request)
+			result, err := reconciler.Reconcile(context.Background(), request)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(Equal(reconcile.Result{}))
 
@@ -197,11 +196,11 @@ var _ = Describe("ReconcileBDPL", func() {
 		It("updates the bdpl status with the deployed state ignoring the qjob", func() {
 			desiredQStatefulSet.Status = qstsv1a1.QuarksStatefulSetStatus{Ready: true}
 
-			result, err := reconciler.Reconcile(request)
+			result, err := reconciler.Reconcile(context.Background(), request)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(Equal(reconcile.Result{}))
 
-			result, err = jobreconciler.Reconcile(request)
+			result, err = jobreconciler.Reconcile(context.Background(), request)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(Equal(reconcile.Result{Requeue: false}))
 
@@ -248,11 +247,11 @@ var _ = Describe("ReconcileBDPL", func() {
 			desiredQStatefulSet.Status = qstsv1a1.QuarksStatefulSetStatus{Ready: true}
 			desiredQJob.Labels = map[string]string{bdv1.LabelDeploymentName: "deployment-name"}
 
-			result, err := reconciler.Reconcile(request)
+			result, err := reconciler.Reconcile(context.Background(), request)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(Equal(reconcile.Result{}))
 
-			result, err = jobreconciler.Reconcile(request)
+			result, err = jobreconciler.Reconcile(context.Background(), request)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(Equal(reconcile.Result{}))
 			Expect(bdpl.Status.TotalJobCount).To(Equal(1))
@@ -284,7 +283,7 @@ var _ = Describe("ReconcileBDPL", func() {
 
 	Context("BDPL with multiple instance groups", func() {
 		BeforeEach(func() {
-			client.ListCalls(func(context context.Context, object runtime.Object, opts ...crc.ListOption) error {
+			client.ListCalls(func(context context.Context, object crc.ObjectList, opts ...crc.ListOption) error {
 				switch object := object.(type) {
 				case *qjv1a1.QuarksJobList:
 					list := &qjv1a1.QuarksJobList{Items: []qjv1a1.QuarksJob{*desiredQJob}}

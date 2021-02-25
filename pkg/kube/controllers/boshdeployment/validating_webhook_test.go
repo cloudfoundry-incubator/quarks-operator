@@ -8,7 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 	"go.uber.org/zap"
 
-	"k8s.io/api/admission/v1beta1"
+	v1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -65,15 +65,18 @@ var _ = Describe("When the validating webhook handles a manifest", func() {
 		scheme := runtime.NewScheme()
 		Expect(corev1.AddToScheme(scheme)).To(Succeed())
 		Expect(bdv1.AddToScheme(scheme)).To(Succeed())
-		client = fake.NewFakeClientWithScheme(scheme, &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "base-manifest",
-				Namespace: "default",
-			},
-			Data: map[string]string{
-				bdv1.ManifestSpecName: string(manifestBytes),
-			},
-		})
+		client = fake.NewClientBuilder().
+			WithObjects(&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "base-manifest",
+					Namespace: "default",
+				},
+				Data: map[string]string{
+					bdv1.ManifestSpecName: string(manifestBytes),
+				},
+			}).
+			WithScheme(scheme).
+			Build()
 		decoder, _ = admission.NewDecoder(scheme)
 		validator = boshdeployment.NewValidator(log, &cfcfg.Config{CtxTimeOut: 10 * time.Second})
 		_ = validator.(inject.Client).InjectClient(client)
@@ -81,7 +84,7 @@ var _ = Describe("When the validating webhook handles a manifest", func() {
 
 		validateBoshDeployment = func() admission.Response {
 			response := validator.Handle(ctx, admission.Request{
-				AdmissionRequest: v1beta1.AdmissionRequest{
+				AdmissionRequest: v1.AdmissionRequest{
 					Object: runtime.RawExtension{
 						Raw: boshDeploymentBytes,
 					},

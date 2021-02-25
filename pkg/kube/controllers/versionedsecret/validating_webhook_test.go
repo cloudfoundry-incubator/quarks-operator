@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 	"go.uber.org/zap"
 
-	"k8s.io/api/admission/v1beta1"
+	v1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -58,7 +58,7 @@ var _ = Describe("When the webhook handles update request of a secret", func() {
 
 		validateSecret = func() admission.Response {
 			response := validator.Handle(ctx, admission.Request{
-				AdmissionRequest: v1beta1.AdmissionRequest{
+				AdmissionRequest: v1.AdmissionRequest{
 					Object: runtime.RawExtension{
 						Raw: secretBytes,
 					},

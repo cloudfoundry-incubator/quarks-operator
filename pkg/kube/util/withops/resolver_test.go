@@ -15,7 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	fakeClient "sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	bdc "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
@@ -72,52 +72,53 @@ var _ = Describe("WithOps", func() {
   path: /instance_groups/name=component1?/instances
   value: 4`
 
-		client = fakeClient.NewFakeClient(
-			&corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "base-manifest",
-					Namespace: "default",
-				},
-				Data: map[string]string{bdc.ManifestSpecName: `---
+		client = fake.NewClientBuilder().
+			WithObjects(
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "base-manifest",
+						Namespace: "default",
+					},
+					Data: map[string]string{bdc.ManifestSpecName: `---
 instance_groups:
   - name: component1
     instances: 1
   - name: component2
     instances: 2
 `},
-			},
-			&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "",
-					Namespace: "default",
 				},
-				Data: map[string][]byte{bdc.ManifestSpecName: []byte(`---
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{bdc.ManifestSpecName: []byte(`---
 instance_groups:
   - name: component3
     instances: 1
   - name: component4
     instances: 2
 `)},
-			},
-			&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "opaque-manifest",
-					Namespace: "default",
 				},
-				Data: map[string][]byte{bdc.ManifestSpecName: []byte(`---
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "opaque-manifest",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{bdc.ManifestSpecName: []byte(`---
 instance_groups:
   - name: component3
     instances: 1
   - name: component4
     instances: 2
 `)},
-			},
-			&corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "manifest-with-vars",
-					Namespace: "default",
 				},
-				Data: map[string]string{bdc.ManifestSpecName: `---
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "manifest-with-vars",
+						Namespace: "default",
+					},
+					Data: map[string]string{bdc.ManifestSpecName: `---
 name: foo
 instance_groups:
   - name: component1
@@ -135,13 +136,13 @@ variables:
       is_ca: true
       common_name: ((system_domain))
 `},
-			},
-			&corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "manifest-with-dns",
-					Namespace: "default",
 				},
-				Data: map[string]string{bdc.ManifestSpecName: `---
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "manifest-with-dns",
+						Namespace: "default",
+					},
+					Data: map[string]string{bdc.ManifestSpecName: `---
 name: manifest-with-dns
 addons:
 - name: bosh-dns-aliases
@@ -171,13 +172,13 @@ variables:
       is_ca: true
       common_name: uaa.service.cf.internal
 `},
-			},
-			&corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "manifest-with-multiline-implicit-var",
-					Namespace: "default",
 				},
-				Data: map[string]string{bdc.ManifestSpecName: `---
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "manifest-with-multiline-implicit-var",
+						Namespace: "default",
+					},
+					Data: map[string]string{bdc.ManifestSpecName: `---
 name: foo
 instance_groups:
   - name: component1
@@ -185,13 +186,13 @@ instance_groups:
     properties:
       ca: ((implicit_ca))
 `},
-			},
-			&corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "manifest-with-embedded-implicit-var",
-					Namespace: "default",
 				},
-				Data: map[string]string{bdc.ManifestSpecName: `---
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "manifest-with-embedded-implicit-var",
+						Namespace: "default",
+					},
+					Data: map[string]string{bdc.ManifestSpecName: `---
 name: foo
 instance_groups:
   - name: component1
@@ -199,13 +200,13 @@ instance_groups:
     properties:
       host: 'foo.((system_domain))'
 `},
-			},
-			&corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "manifest-with-multi-key-implicit-var",
-					Namespace: "default",
 				},
-				Data: map[string]string{bdc.ManifestSpecName: `---
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "manifest-with-multi-key-implicit-var",
+						Namespace: "default",
+					},
+					Data: map[string]string{bdc.ManifestSpecName: `---
 name: foo
 instance_groups:
   - name: component1
@@ -216,13 +217,13 @@ instance_groups:
         cert: '((ssl/cert))'
         key: '((ssl/key))'
 `},
-			},
-			&corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "manifest-with-json-implicit-var",
-					Namespace: "default",
 				},
-				Data: map[string]string{bdc.ManifestSpecName: `---
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "manifest-with-json-implicit-var",
+						Namespace: "default",
+					},
+					Data: map[string]string{bdc.ManifestSpecName: `---
 name: foo
 instance_groups:
   - name: component1
@@ -232,107 +233,107 @@ instance_groups:
     properties:
       nested: ((implicit_struct))
 `},
-			},
-			&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "var-system-domain",
-					Namespace: "default",
 				},
-				Data: map[string][]byte{"value": []byte("example.com")},
-			},
-			&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "var-implicit-ca",
-					Namespace: "default",
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "var-system-domain",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{"value": []byte("example.com")},
 				},
-				Data: map[string][]byte{"value": []byte("complicated\n'multiline'\nstring")},
-			},
-			&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "var-ssl",
-					Namespace: "default",
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "var-implicit-ca",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{"value": []byte("complicated\n'multiline'\nstring")},
 				},
-				Data: map[string][]byte{
-					"ca":   []byte("the-ca"),
-					"cert": []byte("the-cert"),
-					"key":  []byte("the-key"),
-				},
-			},
-			&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "var-implicit-struct",
-					Namespace: "default",
-					Annotations: map[string]string{
-						bdc.AnnotationJSONValue: "true",
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "var-ssl",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"ca":   []byte("the-ca"),
+						"cert": []byte("the-cert"),
+						"key":  []byte("the-key"),
 					},
 				},
-				Data: map[string][]byte{
-					"value": []byte(`{"a":{"b":3}}`),
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "var-implicit-struct",
+						Namespace: "default",
+						Annotations: map[string]string{
+							bdc.AnnotationJSONValue: "true",
+						},
+					},
+					Data: map[string][]byte{
+						"value": []byte(`{"a":{"b":3}}`),
+					},
 				},
-			},
-			&corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "replace-ops",
-					Namespace: "default",
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "replace-ops",
+						Namespace: "default",
+					},
+					Data: map[string]string{bdc.OpsSpecName: replaceOpsStr},
 				},
-				Data: map[string]string{bdc.OpsSpecName: replaceOpsStr},
-			},
-			&corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "remove-ops",
-					Namespace: "default",
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "remove-ops",
+						Namespace: "default",
+					},
+					Data: map[string]string{bdc.OpsSpecName: removeOpsStr},
 				},
-				Data: map[string]string{bdc.OpsSpecName: removeOpsStr},
-			},
-			&corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "empty-ref",
-					Namespace: "default",
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "empty-ref",
+						Namespace: "default",
+					},
+					Data: map[string]string{},
 				},
-				Data: map[string]string{},
-			},
-			&corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "invalid-yaml",
-					Namespace: "default",
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "invalid-yaml",
+						Namespace: "default",
+					},
+					Data: map[string]string{bdc.ManifestSpecName: "!yaml"},
 				},
-				Data: map[string]string{bdc.ManifestSpecName: "!yaml"},
-			},
-			&corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "invalid-ops",
-					Namespace: "default",
-				},
-				Data: map[string]string{bdc.OpsSpecName: `
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "invalid-ops",
+						Namespace: "default",
+					},
+					Data: map[string]string{bdc.OpsSpecName: `
 - type: invalid-ops
    path: /name
    value: new-deployment
 `},
-			},
-			&corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "missing-key",
-					Namespace: "default",
 				},
-				Data: map[string]string{bdc.OpsSpecName: `
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "missing-key",
+						Namespace: "default",
+					},
+					Data: map[string]string{bdc.OpsSpecName: `
 - type: replace
    path: /missing_key
    value: desired_value
 `},
-			},
-			&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "opaque-ops",
-					Namespace: "default",
 				},
-				Data: map[string][]byte{bdc.OpsSpecName: []byte(opaqueOpsStr)},
-			},
-			&corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "manifest-with-resources",
-					Namespace: "default",
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "opaque-ops",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{bdc.OpsSpecName: []byte(opaqueOpsStr)},
 				},
-				Data: map[string]string{bdc.ManifestSpecName: `---
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "manifest-with-resources",
+						Namespace: "default",
+					},
+					Data: map[string]string{bdc.ManifestSpecName: `---
 instance_groups:
   - name: componentWithResources
     instances: 1
@@ -349,8 +350,8 @@ instance_groups:
                 memory: 128Mi
                 cpu: 5m
 `},
-			},
-		)
+				},
+			).Build()
 
 		remoteFileServer = ghttp.NewServer()
 		remoteFileServer.AllowUnhandledRequests = true

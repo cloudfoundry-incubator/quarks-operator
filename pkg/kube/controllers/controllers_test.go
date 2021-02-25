@@ -13,7 +13,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -83,7 +82,7 @@ var _ = Describe("Controllers", func() {
 		})
 
 		It("sets the operator namespace label", func() {
-			client.UpdateCalls(func(_ context.Context, object runtime.Object, _ ...crc.UpdateOption) error {
+			client.UpdateCalls(func(_ context.Context, object crc.Object, _ ...crc.UpdateOption) error {
 				ns := object.(*unstructured.Unstructured)
 				labels := ns.GetLabels()
 
@@ -92,7 +91,7 @@ var _ = Describe("Controllers", func() {
 				return nil
 			})
 
-			client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+			client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
 				kind := object.GetObjectKind()
 				if kind.GroupVersionKind().Kind == "Secret" {
 					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
@@ -109,7 +108,7 @@ var _ = Describe("Controllers", func() {
 				file := "/tmp/cf-operator-hook-" + config.OperatorNamespace + "/tls.key"
 				Expect(afero.Exists(config.Fs, file)).To(BeFalse())
 
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
 					kind := object.GetObjectKind()
 					if kind.GroupVersionKind().Kind == "Secret" {
 						return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
@@ -142,7 +141,7 @@ var _ = Describe("Controllers", func() {
 						},
 					},
 				}
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *unstructured.Unstructured:
 						secret.DeepCopyInto(object)
@@ -159,7 +158,7 @@ var _ = Describe("Controllers", func() {
 			})
 
 			It("generates the webhook configuration", func() {
-				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
+				client.CreateCalls(func(context context.Context, object crc.Object, _ ...crc.CreateOption) error {
 					// We should be getting 2 Create calls - one for the
 					// Validation webhook, one for the Mutating Webhook
 

@@ -2,6 +2,7 @@
 package fakes
 
 import (
+	"context"
 	"net/http"
 	"sync"
 
@@ -187,10 +188,10 @@ type FakeManager struct {
 	setFieldsReturnsOnCall map[int]struct {
 		result1 error
 	}
-	StartStub        func(<-chan struct{}) error
+	StartStub        func(context.Context) error
 	startMutex       sync.RWMutex
 	startArgsForCall []struct {
-		arg1 <-chan struct{}
+		arg1 context.Context
 	}
 	startReturns struct {
 		result1 error
@@ -1085,11 +1086,11 @@ func (fake *FakeManager) SetFieldsReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *FakeManager) Start(arg1 <-chan struct{}) error {
+func (fake *FakeManager) Start(arg1 context.Context) error {
 	fake.startMutex.Lock()
 	ret, specificReturn := fake.startReturnsOnCall[len(fake.startArgsForCall)]
 	fake.startArgsForCall = append(fake.startArgsForCall, struct {
-		arg1 <-chan struct{}
+		arg1 context.Context
 	}{arg1})
 	fake.recordInvocation("Start", []interface{}{arg1})
 	fake.startMutex.Unlock()
@@ -1109,13 +1110,13 @@ func (fake *FakeManager) StartCallCount() int {
 	return len(fake.startArgsForCall)
 }
 
-func (fake *FakeManager) StartCalls(stub func(<-chan struct{}) error) {
+func (fake *FakeManager) StartCalls(stub func(context.Context) error) {
 	fake.startMutex.Lock()
 	defer fake.startMutex.Unlock()
 	fake.StartStub = stub
 }
 
-func (fake *FakeManager) StartArgsForCall(i int) <-chan struct{} {
+func (fake *FakeManager) StartArgsForCall(i int) context.Context {
 	fake.startMutex.RLock()
 	defer fake.startMutex.RUnlock()
 	argsForCall := fake.startArgsForCall[i]
