@@ -1,6 +1,6 @@
 #!/bin/bash
 
-quarks_job_release=$(grep code.cloudfoundry.org/quarks-job go.mod | awk '{print $2}')
+quarks_job_release=$(grep code.cloudfoundry.org/quarks-job go.mod | awk '{print $2}' | head -1)
 
 # QUARKS_JOB_IMAGE_TAG is used for integration tests
 if [ -z ${QUARKS_JOB_IMAGE_TAG+x} ]; then
@@ -16,7 +16,7 @@ if [ -z ${QUARKS_JOB_HELM_VERSION+x} ]; then
   export QUARKS_JOB_HELM_VERSION
 fi
 
-quarks_secret_release=$(grep code.cloudfoundry.org/quarks-secret go.mod | awk '{print $2}')
+quarks_secret_release=$(grep code.cloudfoundry.org/quarks-secret go.mod | awk '{print $2}' | head -1)
 
 # QUARKS_SECRET_IMAGE_TAG is used for integration tests
 if [ -z ${QUARKS_SECRET_IMAGE_TAG+x} ]; then
@@ -28,11 +28,11 @@ fi
 # QUARKS_SECRET_HELM_VERSION is used to build helm charts including sub-charts
 if [ -z ${QUARKS_SECRET_HELM_VERSION+x} ]; then
   # helm version handling for leading 'v' is inconsistent, 'v' is not part of semver
-  QUARKS_SECRET_HELM_VERSION=$(echo "$quarks_secret_release" | sed 's/^v//')
+  QUARKS_SECRET_HELM_VERSION=$(echo "$quarks_secret_release" | sed 's/^v//' | head -1)
   export QUARKS_SECRET_HELM_VERSION
 fi
 
-quarks_statefulset_release=$(grep code.cloudfoundry.org/quarks-statefulset go.mod | awk '{print $2}')
+quarks_statefulset_release=$(grep code.cloudfoundry.org/quarks-statefulset go.mod | awk '{print $2}' | head -1)
 
 # QUARKS_STS_IMAGE_TAG is used for integration tests
 if [ -z ${QUARKS_STS_IMAGE_TAG+x} ]; then

@@ -13,6 +13,7 @@ fi
 NODES=${NODES:-1}
 FLAKE_ATTEMPTS=${FLAKE_ATTEMPTS:-3}
 ginkgo \
+  -v \
   --nodes="$NODES" \
   --flakeAttempts="$FLAKE_ATTEMPTS" \
   e2e/kube/upgrade
