@@ -28,9 +28,10 @@ var _ = Describe("Quarks Upgrade test", func() {
 		_ = kubectl.Delete("crds", "quarksstatefulsets.quarks.cloudfoundry.org")
 	})
 
-	When("the upgrades happen", func() {
+	When("upgrading quarks from the latest helm release to the current checkout", func() {
 		selector := "example=owned-by-bdpl"
 
+		// upgrade to the locally build helm release
 		upgradeOperatorToCurrent := func() {
 			dir, err := os.Getwd()
 			Expect(err).ToNot(HaveOccurred())
@@ -45,8 +46,8 @@ var _ = Describe("Quarks Upgrade test", func() {
 			Expect(err).ToNot(HaveOccurred())
 		}
 
-		// installLatestOperator fetches latest release and deploy the operator
-		installLatestOperator := func() {
+		// installLatestOperator fetches latest helm release and deploys the operator
+		installLatestOperator := func() string {
 			path, teardown, err := e2ehelper.GetChart("quarks/quarks")
 			Expect(err).ToNot(HaveOccurred())
 			teardowns = append(teardowns, teardown)
@@ -64,11 +65,10 @@ var _ = Describe("Quarks Upgrade test", func() {
 			)
 			Expect(err).ToNot(HaveOccurred())
 			teardowns = append([]e2ehelper.TearDownFunc{teardown}, teardowns...)
-
-			namespace = monitoredID
+			return monitoredID
 		}
 
-		checkServices := func(namespace string) {
+		checkServices := func() {
 			services := []string{"quarks-gora", "quarks-gora-0", "quarks-gora-1", "quarks-gora-2"}
 			for _, svc := range services {
 				err := kubectl.WaitForService(namespace, svc)
@@ -86,17 +86,17 @@ var _ = Describe("Quarks Upgrade test", func() {
 					}
 				}
 				return nil
-			}).Should(BeNil(), "dns lookup on services")
+			}).Should(BeNil(), "DNS lookup on services failed")
 		}
 
 		// exerciseGora simulates a real-world deployment checking
 		// deployment of pods, working of service and delete of pods.
-		exerciseGora := func(namespace string) {
+		exerciseGora := func() {
 			apply(namespace, "bosh-deployment/quarks-gora-errands.yaml")
 			waitReady(namespace, "pod/quarks-gora-2")
 
 			By("Checking services")
-			checkServices(namespace)
+			checkServices()
 
 			By("Doing sanity checks on the latest release")
 			exists, err := kubectl.SecretExists(namespace, "link-quarks-gora-quarks-gora")
@@ -123,7 +123,8 @@ var _ = Describe("Quarks Upgrade test", func() {
 			Expect(err).ToNot(HaveOccurred())
 		}
 
-		deployGora := func(namespace string) {
+		// deployGora deploys the gora release
+		deployGora := func() {
 			apply(namespace, "bosh-deployment/quarks-gora-errands.yaml")
 			waitReady(namespace, "pod/quarks-gora-2")
 
@@ -133,7 +134,7 @@ var _ = Describe("Quarks Upgrade test", func() {
 			}, 360*time.Second, 10*time.Second).Should(BeTrue())
 
 			By("Checking services")
-			checkServices(namespace)
+			checkServices()
 
 			// Check autoerrand was executed
 			err := kubectl.WaitLabelFilter(namespace, "complete", "pod", "quarks.cloudfoundry.org/qjob-name=autoerrand")
@@ -166,14 +167,33 @@ var _ = Describe("Quarks Upgrade test", func() {
 			Expect(exists).To(BeTrue())
 		}
 
-		checkUpgrade := func(namespace string) {
+		BeforeEach(func() {
+			By("Deploying the latest release of cf-operator")
+			namespace = installLatestOperator()
+
+			By("setting up certs", func() {
+				apply(namespace, "bosh-deployment/quarks-gora-certs.yaml")
+				err := kubectl.WaitForSecret(namespace, "var-quarks-gora-ssl")
+				Expect(err).ToNot(HaveOccurred())
+				err = kubectl.WaitForSecret(namespace, "var-quarks-gora-ssl-ca")
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			By("Excersing and deploying Gora")
+			exerciseGora()
+			deployGora()
+		})
+
+		It("manages the bosh deployment HA between upgrades", func() {
+			upgradeOperatorToCurrent()
+
 			By("Checking quarks-gora is up after upgrade")
 			exists, err := kubectl.PodExists(namespace, "quarks.cloudfoundry.org/deployment-name=gora-test-deployment", "quarks-gora-2")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exists).To(BeTrue())
 
 			By("Checking services")
-			checkServices(namespace)
+			checkServices()
 
 			By("Restart pods")
 			err = kubectl.Delete("--namespace", namespace, "pod", "quarks-gora-0")
@@ -183,8 +203,8 @@ var _ = Describe("Quarks Upgrade test", func() {
 			err = kubectl.Delete("--namespace", namespace, "pod", "quarks-gora-2")
 			Expect(err).ToNot(HaveOccurred())
 
-			By("Checking services")
-			checkServices(namespace)
+			By("Checking services again")
+			checkServices()
 
 			By("Scaling quarks-gora after the upgrade")
 			scale(namespace, "1")
@@ -244,29 +264,6 @@ var _ = Describe("Quarks Upgrade test", func() {
 
 			err = kubectl.WaitLabelFilter(namespace, "complete", "pod", "quarks.cloudfoundry.org/qjob-name=smoke")
 			Expect(err).ToNot(HaveOccurred())
-		}
-
-		setupCerts := func(namespace string) {
-			apply(namespace, "bosh-deployment/quarks-gora-certs.yaml")
-			err := kubectl.WaitForSecret(namespace, "var-quarks-gora-ssl")
-			Expect(err).ToNot(HaveOccurred())
-			err = kubectl.WaitForSecret(namespace, "var-quarks-gora-ssl-ca")
-			Expect(err).ToNot(HaveOccurred())
-		}
-
-		BeforeEach(func() {
-			By("Deploying the latest release of cf-operator")
-			installLatestOperator()
-
-			By("Excersing and deploying Gora")
-			setupCerts(namespace)
-			exerciseGora(namespace)
-			deployGora(namespace)
-		})
-
-		It("manages the bosh deployment HA between upgrades", func() {
-			upgradeOperatorToCurrent()
-			checkUpgrade(namespace)
 		})
 	})
 })
