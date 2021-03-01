@@ -44,6 +44,18 @@ rules:
   - get
   - patch
   - list
+- apiGroups:
+  - apps
+  resources:
+  - statefulsets
+  verbs:
+  - get
+  - list
+  - create
+  - patch
+  - update
+  - delete
+  - watch
 {{- end }}
 
 ---
