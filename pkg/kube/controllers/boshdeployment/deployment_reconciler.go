@@ -83,7 +83,7 @@ type ReconcileBOSHDeployment struct {
 }
 
 // Reconcile starts the deployment process for a BOSHDeployment and deploys QuarksJobs to generate required properties for instance groups and rendered BPM
-func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileBOSHDeployment) Reconcile(_ context.Context, request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the BOSHDeployment instance
 	bdpl := &bdv1.BOSHDeployment{}
 

@@ -360,11 +360,11 @@ const Drains = `---
 name: my-manifest
 releases:
 - name: quarks-gora
-  version: "0.0.15"
+  version: "0.0.17"
   url: ghcr.io/cloudfoundry-incubator
   stemcell:
-    os: SLE_15_SP1
-    version: 27.10-7.0.0_374.gb8e8e6af
+    os: SLE_15_SP2
+    version: 29.6-7.0.0_374.gb8e8e6af
 instance_groups:
 - name: drains
   instances: 1

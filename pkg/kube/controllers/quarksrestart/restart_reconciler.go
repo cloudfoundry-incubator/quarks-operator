@@ -42,7 +42,7 @@ type ReconcileRestart struct {
 
 // Reconcile adds an annotation to deployments, statefulsets & jobs which own the pod
 // whose referred secret has changed
-func (r *ReconcileRestart) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileRestart) Reconcile(_ context.Context, request reconcile.Request) (reconcile.Result, error) {
 	pod := &corev1.Pod{}
 
 	// Set the ctx to be Background, as the top-level context for incoming requests.

@@ -1,10 +1,10 @@
 module code.cloudfoundry.org/quarks-operator
 
 require (
-	code.cloudfoundry.org/quarks-job v1.0.213
-	code.cloudfoundry.org/quarks-secret v1.0.754
-	code.cloudfoundry.org/quarks-statefulset v1.0.1311
-	code.cloudfoundry.org/quarks-utils v0.0.2-0.20210112105226-682bcba574a2
+	code.cloudfoundry.org/quarks-job v1.0.216
+	code.cloudfoundry.org/quarks-secret v1.0.756
+	code.cloudfoundry.org/quarks-statefulset v1.0.1317
+	code.cloudfoundry.org/quarks-utils v0.0.2-0.20210225151037-f17676b0c328
 	github.com/SUSE/go-patch v0.3.0
 	github.com/bmatcuk/doublestar v1.1.1 // indirect
 	github.com/charlievieth/fs v0.0.0-20170613215519-7dc373669fa1 // indirect
@@ -13,7 +13,7 @@ require (
 	github.com/cppforlife/go-patch v0.2.0 // indirect
 	github.com/daaku/go.zipexe v1.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.4.9
-	github.com/go-logr/logr v0.1.0
+	github.com/go-logr/logr v0.3.0
 	github.com/go-test/deep v1.0.7
 	github.com/gonvenience/bunt v1.1.4
 	github.com/hpcloud/tail v1.0.0
@@ -31,14 +31,14 @@ require (
 	github.com/viovanov/bosh-template-go v0.0.0-20200416144406-32ddfa4afdb0
 	go.uber.org/zap v1.16.0
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
-	gomodules.xyz/jsonpatch/v2 v2.0.1
+	gomodules.xyz/jsonpatch/v2 v2.1.0
 	gopkg.in/yaml.v2 v2.3.0
-	k8s.io/api v0.18.9
-	k8s.io/apiextensions-apiserver v0.18.9
-	k8s.io/apimachinery v0.18.9
-	k8s.io/client-go v0.18.9
-	k8s.io/utils v0.0.0-20200603063816-c1c6865ac451
-	sigs.k8s.io/controller-runtime v0.6.3
+	k8s.io/api v0.20.4
+	k8s.io/apiextensions-apiserver v0.20.4
+	k8s.io/apimachinery v0.20.4
+	k8s.io/client-go v0.20.4
+	k8s.io/utils v0.0.0-20210111153108-fddb29f9d009
+	sigs.k8s.io/controller-runtime v0.8.2
 	sigs.k8s.io/yaml v1.2.0
 )
 

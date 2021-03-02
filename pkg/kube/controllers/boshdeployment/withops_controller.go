@@ -9,6 +9,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -63,9 +64,9 @@ func AddWithOps(ctx context.Context, config *config.Config, mgr manager.Manager)
 			shouldProcessEvent := isWithOpsSecret(o)
 			if shouldProcessEvent {
 				ctxlog.NewPredicateEvent(o).Debug(
-					ctx, e.Meta, names.Secret,
+					ctx, e.Object, names.Secret,
 					fmt.Sprintf("Create predicate passed for '%s/%s', secret with label %s, value %s",
-						e.Meta.GetNamespace(), e.Meta.GetName(), bdv1.LabelDeploymentSecretType, o.GetLabels()[bdv1.LabelDeploymentSecretType]),
+						e.Object.GetNamespace(), e.Object.GetName(), bdv1.LabelDeploymentSecretType, o.GetLabels()[bdv1.LabelDeploymentSecretType]),
 				)
 			}
 
@@ -80,7 +81,7 @@ func AddWithOps(ctx context.Context, config *config.Config, mgr manager.Manager)
 			shouldProcessEvent := isWithOpsSecret(newSecret)
 			if shouldProcessEvent && !reflect.DeepEqual(oldSecret.Data, newSecret.Data) {
 				ctxlog.NewPredicateEvent(e.ObjectNew).Debug(
-					ctx, e.MetaNew, names.Secret,
+					ctx, e.ObjectNew, names.Secret,
 					fmt.Sprintf("Update predicate passed for '%s/%s', existing secret with label %s, value %s",
 						newSecret.GetNamespace(), newSecret.GetName(), bdv1.LabelDeploymentSecretType, newSecret.GetLabels()[bdv1.LabelDeploymentSecretType]),
 				)
@@ -108,9 +109,9 @@ func AddWithOps(ctx context.Context, config *config.Config, mgr manager.Manager)
 			return !reflect.DeepEqual(o.Data, n.Data) && ok
 		},
 	}
-	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
-			s := a.Object.(*corev1.Secret)
+	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, handler.EnqueueRequestsFromMapFunc(
+		func(a client.Object) []reconcile.Request {
+			s := a.(*corev1.Secret)
 
 			if skip.Reconciles(ctx, mgr.GetClient(), s) {
 				return []reconcile.Request{}
@@ -123,14 +124,13 @@ func AddWithOps(ctx context.Context, config *config.Config, mgr manager.Manager)
 					},
 				},
 			}
-			ctxlog.NewPredicateEvent(a.Object).Debug(
-				ctx, a.Meta, names.Secret,
+			ctxlog.NewPredicateEvent(a).Debug(
+				ctx, a, names.Secret,
 				fmt.Sprintf("Update predicate passed for existing secret '%s/%s'", s.GetNamespace(), s.GetName()),
 			)
 
 			return result
-		}),
-	}, nsPred, p)
+		}), nsPred, p)
 	if err != nil {
 		return errors.Wrapf(err, "Watching secrets failed in withops controller.")
 	}

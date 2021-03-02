@@ -36,7 +36,7 @@ var _ = Describe("DeployWithStorage", func() {
 			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			By("checking for instance group pods")
-			err = env.WaitForInstanceGroup(env.Namespace, "test-bdpl", "bpm", "1", 1)
+			err = env.WaitForInstanceGroup(env.Namespace, "test-bdpl", "bpm", 1)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			By("checking for services")
@@ -88,11 +88,11 @@ var _ = Describe("DeployWithStorage", func() {
 			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			By("checking for pod")
-			err = env.WaitForInstanceGroup(env.Namespace, "bpm-affinity", "bpm1", "1", 2)
+			err = env.WaitForInstanceGroup(env.Namespace, "bpm-affinity", "bpm1", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for pods from instance group bpm1")
-			err = env.WaitForInstanceGroup(env.Namespace, "bpm-affinity", "bpm2", "1", 2)
+			err = env.WaitForInstanceGroup(env.Namespace, "bpm-affinity", "bpm2", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for pods from instance group bpm2")
-			err = env.WaitForInstanceGroup(env.Namespace, "bpm-affinity", "bpm3", "1", 2)
+			err = env.WaitForInstanceGroup(env.Namespace, "bpm-affinity", "bpm3", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for pods from instance group bpm3")
 
 			By("checking for affinity")

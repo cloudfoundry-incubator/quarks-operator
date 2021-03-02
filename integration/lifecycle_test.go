@@ -45,7 +45,7 @@ var _ = Describe("Lifecycle", func() {
 			Expect(ownerReference.Kind).To(Equal(bdv1.BOSHDeploymentResourceKind))
 
 			By("checking for instance group pods")
-			err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", "1", 2)
+			err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			// check for services
@@ -103,7 +103,7 @@ var _ = Describe("Lifecycle", func() {
 			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			By("checking for instance group pods")
-			err = env.WaitForInstanceGroup(env.Namespace, "test", "drains", "1", 1)
+			err = env.WaitForInstanceGroup(env.Namespace, "test", "drains", 1)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 			err = env.WaitForPodReady(env.Namespace, "drains-0")
 			Expect(err).NotTo(HaveOccurred())

@@ -17,52 +17,37 @@ var _ = Describe("Quarks Upgrade test", func() {
 	var (
 		monitoredID       string
 		namespace         string
-		namespace2        string
 		operatorNamespace string
 	)
 
-	// Set the configuration for all tests
-	BeforeEach(func() {
-	})
-
 	// Delete CRDs to make sure the cluster is pristine
-	JustBeforeEach(func() {
+	BeforeEach(func() {
 		_ = kubectl.Delete("crds", "boshdeployments.quarks.cloudfoundry.org")
 		_ = kubectl.Delete("crds", "quarksjobs.quarks.cloudfoundry.org")
 		_ = kubectl.Delete("crds", "quarkssecrets.quarks.cloudfoundry.org")
 		_ = kubectl.Delete("crds", "quarksstatefulsets.quarks.cloudfoundry.org")
 	})
 
-	Context("upgrade from latest released chart", func() {
-		var singleNamespace bool
+	When("upgrading quarks from the latest helm release to the current checkout", func() {
 		selector := "example=owned-by-bdpl"
 
-		upgradeOperatorToCurrent := func(singlenamespace bool) {
+		// upgrade to the locally build helm release
+		upgradeOperatorToCurrent := func() {
 			dir, err := os.Getwd()
 			Expect(err).ToNot(HaveOccurred())
 
 			chartPath := fmt.Sprintf("%s%s", dir, "/../../../helm/quarks")
-			if singlenamespace {
-				_, err := e2ehelper.UpgradeChart(chartPath, operatorNamespace,
-					"--set", fmt.Sprintf("global.singleNamespace.name=%s", namespace),
-					"--set", fmt.Sprintf("global.monitoredID=%s", monitoredID),
-					"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID),
-					"--set", fmt.Sprintf("corednsServiceAccount.name=%s-%s", namespace, "coredns-quarks"),
-				)
-				Expect(err).ToNot(HaveOccurred())
-			} else {
-				_, err := e2ehelper.UpgradeChart(chartPath, operatorNamespace,
-					"--set", fmt.Sprintf("global.singleNamespace.create=%s", "false"),
-					"--set", fmt.Sprintf("global.monitoredID=%s", monitoredID),
-					"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID),
-					"--set", fmt.Sprintf("corednsServiceAccount.name=%s-%s", namespace, "coredns-quarks"),
-				)
-				Expect(err).ToNot(HaveOccurred())
-			}
+			_, err = e2ehelper.UpgradeChart(chartPath, operatorNamespace,
+				"--set", fmt.Sprintf("global.singleNamespace.name=%s", namespace),
+				"--set", fmt.Sprintf("global.monitoredID=%s", monitoredID),
+				"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID),
+				"--set", fmt.Sprintf("corednsServiceAccount.name=%s-%s", namespace, "coredns-quarks"),
+			)
+			Expect(err).ToNot(HaveOccurred())
 		}
 
-		// installLatestOperator fetches latest release and deploy the operator
-		installLatestOperator := func(singlenamespace bool) {
+		// installLatestOperator fetches latest helm release and deploys the operator
+		installLatestOperator := func() string {
 			path, teardown, err := e2ehelper.GetChart("quarks/quarks")
 			Expect(err).ToNot(HaveOccurred())
 			teardowns = append(teardowns, teardown)
@@ -71,51 +56,47 @@ var _ = Describe("Quarks Upgrade test", func() {
 			Expect(err).ToNot(HaveOccurred())
 			teardowns = append(teardowns, teardown)
 
-			if singlenamespace {
-				// uses the default 'singleNamespace' setup from our helm templates
-				teardown, err = e2ehelper.InstallChart(path+"/quarks", operatorNamespace,
-					"--set", fmt.Sprintf("global.singleNamespace.name=%s", monitoredID),
-					"--set", fmt.Sprintf("global.monitoredID=%s", monitoredID),
-					"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID),
-					"--set", fmt.Sprintf("corednsServiceAccount.name=%s-%s", monitoredID, "coredns-quarks"),
-				)
-				Expect(err).ToNot(HaveOccurred())
-				teardowns = append([]e2ehelper.TearDownFunc{teardown}, teardowns...)
-
-				namespace = monitoredID
-
-			} else {
-				// TODO coredns service account setup is broken in multi-cluster, needs setup in e2ehelper like persistoutput?
-				// Create multiple namespaces, service accounts and role bindings manually
-				teardown, err = e2ehelper.InstallChart(path+"/quarks", operatorNamespace,
-					"--set", fmt.Sprintf("global.singleNamespace.create=%s", "false"),
-					"--set", fmt.Sprintf("global.monitoredID=%s", monitoredID),
-					"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID),
-					"--set", fmt.Sprintf("corednsServiceAccount.name=%s-%s", monitoredID, "coredns-quarks"),
-				)
-				Expect(err).ToNot(HaveOccurred())
-				teardowns = append([]e2ehelper.TearDownFunc{teardown}, teardowns...)
-
-				var nsTeardowns []e2ehelper.TearDownFunc
-				namespace, nsTeardowns, err = e2ehelper.CreateMonitoredNamespaceFromExistingRole(monitoredID)
-				Expect(err).ToNot(HaveOccurred())
-				teardowns = append(teardowns, nsTeardowns...)
-
-				namespace2, nsTeardowns, err = e2ehelper.CreateMonitoredNamespaceFromExistingRole(monitoredID)
-				Expect(err).ToNot(HaveOccurred())
-				teardowns = append(teardowns, nsTeardowns...)
-			}
+			// uses the default 'singleNamespace' setup from our helm templates
+			teardown, err = e2ehelper.InstallChart(path+"/quarks", operatorNamespace,
+				"--set", fmt.Sprintf("global.singleNamespace.name=%s", monitoredID),
+				"--set", fmt.Sprintf("global.monitoredID=%s", monitoredID),
+				"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID),
+				"--set", fmt.Sprintf("corednsServiceAccount.name=%s-%s", monitoredID, "coredns-quarks"),
+			)
+			Expect(err).ToNot(HaveOccurred())
+			teardowns = append([]e2ehelper.TearDownFunc{teardown}, teardowns...)
+			return monitoredID
 		}
 
-		// exerciseGora simulates a real-world deployment
-		exerciseGora := func(namespace string) {
+		checkServices := func() {
+			services := []string{"quarks-gora", "quarks-gora-0", "quarks-gora-1", "quarks-gora-2"}
+			for _, svc := range services {
+				err := kubectl.WaitForService(namespace, svc)
+				Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to wait for service '%s' creation", svc))
+			}
+
+			Eventually(func() error {
+				for _, svc := range services {
+					works, err := kubectl.ServiceWorks(namespace, svc)
+					if err != nil {
+						return err
+					}
+					if !works {
+						return fmt.Errorf("ServiceWorks returned false for service '%s'", svc)
+					}
+				}
+				return nil
+			}).Should(BeNil(), "DNS lookup on services failed")
+		}
+
+		// exerciseGora simulates a real-world deployment checking
+		// deployment of pods, working of service and delete of pods.
+		exerciseGora := func() {
 			apply(namespace, "bosh-deployment/quarks-gora-errands.yaml")
-			waitReady(namespace, "pod/quarks-gora-0")
-			waitReady(namespace, "pod/quarks-gora-1")
-			err := kubectl.WaitForService(namespace, "quarks-gora-0")
-			Expect(err).ToNot(HaveOccurred())
-			err = kubectl.WaitForService(namespace, "quarks-gora-1")
-			Expect(err).ToNot(HaveOccurred())
+			waitReady(namespace, "pod/quarks-gora-2")
+
+			By("Checking services")
+			checkServices()
 
 			By("Doing sanity checks on the latest release")
 			exists, err := kubectl.SecretExists(namespace, "link-quarks-gora-quarks-gora")
@@ -142,20 +123,21 @@ var _ = Describe("Quarks Upgrade test", func() {
 			Expect(err).ToNot(HaveOccurred())
 		}
 
-		deployGora := func(namespace string) {
+		// deployGora deploys the gora release
+		deployGora := func() {
 			apply(namespace, "bosh-deployment/quarks-gora-errands.yaml")
-			waitReady(namespace, "pod/quarks-gora-1")
+			waitReady(namespace, "pod/quarks-gora-2")
+
 			Eventually(func() bool {
 				exists, _ := kubectl.Exists(namespace, "qjob", "smoke")
 				return exists
 			}, 360*time.Second, 10*time.Second).Should(BeTrue())
 
-			exists, err := kubectl.ServiceExists(namespace, "quarks-gora-0")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(exists).To(BeTrue())
+			By("Checking services")
+			checkServices()
 
 			// Check autoerrand was executed
-			err = kubectl.WaitLabelFilter(namespace, "complete", "pod", "quarks.cloudfoundry.org/qjob-name=autoerrand")
+			err := kubectl.WaitLabelFilter(namespace, "complete", "pod", "quarks.cloudfoundry.org/qjob-name=autoerrand")
 			Expect(err).ToNot(HaveOccurred())
 
 			By("Running quarks-gora smoke tests with the latest release of quarks")
@@ -180,16 +162,49 @@ var _ = Describe("Quarks Upgrade test", func() {
 			Expect(checkEntanglement(namespace, podName, "echo $LINK_QUARKS_GORA_PORT", "55556")).ToNot(HaveOccurred())
 
 			By("Checking quarks-gora is up")
-			exists, err = kubectl.PodExists(namespace, "quarks.cloudfoundry.org/deployment-name=gora-test-deployment", "quarks-gora-0")
+			exists, err := kubectl.PodExists(namespace, "quarks.cloudfoundry.org/deployment-name=gora-test-deployment", "quarks-gora-0")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exists).To(BeTrue())
 		}
 
-		checkUpgrade := func(namespace string) {
+		BeforeEach(func() {
+			By("Deploying the latest release of cf-operator")
+			namespace = installLatestOperator()
+
+			By("setting up certs", func() {
+				apply(namespace, "bosh-deployment/quarks-gora-certs.yaml")
+				err := kubectl.WaitForSecret(namespace, "var-quarks-gora-ssl")
+				Expect(err).ToNot(HaveOccurred())
+				err = kubectl.WaitForSecret(namespace, "var-quarks-gora-ssl-ca")
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			By("Excersing and deploying Gora")
+			exerciseGora()
+			deployGora()
+		})
+
+		It("manages the bosh deployment HA between upgrades", func() {
+			upgradeOperatorToCurrent()
+
 			By("Checking quarks-gora is up after upgrade")
-			exists, err := kubectl.PodExists(namespace, "quarks.cloudfoundry.org/deployment-name=gora-test-deployment", "quarks-gora-0")
+			exists, err := kubectl.PodExists(namespace, "quarks.cloudfoundry.org/deployment-name=gora-test-deployment", "quarks-gora-2")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exists).To(BeTrue())
+
+			By("Checking services")
+			checkServices()
+
+			By("Restart pods")
+			err = kubectl.Delete("--namespace", namespace, "pod", "quarks-gora-0")
+			Expect(err).ToNot(HaveOccurred())
+			err = kubectl.Delete("--namespace", namespace, "pod", "quarks-gora-1")
+			Expect(err).ToNot(HaveOccurred())
+			err = kubectl.Delete("--namespace", namespace, "pod", "quarks-gora-2")
+			Expect(err).ToNot(HaveOccurred())
+
+			By("Checking services again")
+			checkServices()
 
 			By("Scaling quarks-gora after the upgrade")
 			scale(namespace, "1")
@@ -249,68 +264,6 @@ var _ = Describe("Quarks Upgrade test", func() {
 
 			err = kubectl.WaitLabelFilter(namespace, "complete", "pod", "quarks.cloudfoundry.org/qjob-name=smoke")
 			Expect(err).ToNot(HaveOccurred())
-		}
-
-		setupCerts := func(namespace string) {
-			apply(namespace, "bosh-deployment/quarks-gora-certs.yaml")
-			err := kubectl.WaitForSecret(namespace, "var-quarks-gora-ssl")
-			Expect(err).ToNot(HaveOccurred())
-			err = kubectl.WaitForSecret(namespace, "var-quarks-gora-ssl-ca")
-			Expect(err).ToNot(HaveOccurred())
-		}
-
-		JustBeforeEach(func() {
-			By("Deploying the latest release of cfo")
-			installLatestOperator(singleNamespace)
-
-			By("Deploying Gora and deleting it")
-			setupCerts(namespace)
-			exerciseGora(namespace)
-		})
-
-		When("multiple deployments are present in different namespaces", func() {
-			BeforeEach(func() {
-				singleNamespace = false
-			})
-
-			JustBeforeEach(func() {
-				By("Keeping bosh-deployments composed of errands/sts/entanglement between cfo upgrades", func() {
-					deployGora(namespace)
-					setupCerts(namespace2)
-					deployGora(namespace2)
-				})
-			})
-
-			It("deploys and manages a bosh deployment between upgrades", func() {
-				By("Upgrading the operator to the current code checkout", func() {
-					upgradeOperatorToCurrent(singleNamespace)
-					waitReady(namespace, "pod/quarks-gora-1")
-				})
-
-				checkUpgrade(namespace)
-				checkUpgrade(namespace2)
-			})
-		})
-
-		When("only a single deployment is present", func() {
-			BeforeEach(func() {
-				singleNamespace = true
-			})
-
-			JustBeforeEach(func() {
-				By("Keeping a bosh-deployment composed of errands/sts/entanglement between cfo upgrades", func() {
-					deployGora(namespace)
-				})
-			})
-
-			It("deploys and manages a bosh deployment between upgrades", func() {
-				By("Upgrading the operator to the current code checkout", func() {
-					upgradeOperatorToCurrent(singleNamespace)
-					waitReady(namespace, "pod/quarks-gora-1")
-				})
-
-				checkUpgrade(namespace)
-			})
 		})
 	})
 })

@@ -14,7 +14,6 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/bpmconverter"
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/quarks-utils/pkg/cmd"
-	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
 const (
@@ -88,18 +87,11 @@ This will render a provided manifest instance-group
 			return errors.Errorf("%s az-index is negative. %d", tRenderFailedMessage, azIndex)
 		}
 
-		// We use a very large value as a maximum number of replicas per instance group, per AZ
-		// We do this in lieu of using the actual replica count, which would cause pods to always restart
-		specIndex := names.SpecIndex(azIndex, podOrdinal)
-
 		initialRollout := viper.GetBool("initial-rollout")
 		podIP := net.ParseIP(viper.GetString("pod-ip"))
 
-		if podOrdinal+1 > replicas {
-			replicas = podOrdinal + 1
-		}
-
-		return manifest.RenderJobTemplates(boshManifestPath, jobsDir, outputDir, instanceGroupName, specIndex, podIP, replicas, initialRollout)
+		return manifest.RenderJobTemplates(boshManifestPath, jobsDir, outputDir, instanceGroupName, podIP,
+			azIndex, podOrdinal, replicas, initialRollout)
 	},
 }
 
@@ -109,8 +101,8 @@ func init() {
 	pf.StringP("jobs-dir", "j", "", "path to the jobs dir.")
 	pf.StringP("output-dir", "d", bpmconverter.VolumeJobsDirMountPath, "path to output dir.")
 	pf.IntP("az-index", "", -1, "az index")
-	pf.IntP("pod-ordinal", "", -1, "pod ordinal")
-	pf.IntP("replicas", "", -1, "number of replicas")
+	pf.IntP("pod-ordinal", "", -1, "pod ordinal, overrides replicas if smaller")
+	pf.IntP("replicas", "", -1, "number of replicas, overrides ig.Instances")
 	pf.StringP("pod-ip", "", "", "pod IP")
 
 	viper.BindPFlag("jobs-dir", pf.Lookup("jobs-dir"))

@@ -48,7 +48,7 @@ operator:
     port: "2999"
   # boshDNSDockerImage is the docker image used for emulating bosh DNS (a CoreDNS image).
   boshDNSDockerImage: "ghcr.io/cfcontainerizationbot/coredns:0.1.0-1.6.7-bp152.1.19"
-  hookDockerImage: "ghcr.io/cfcontainerizationbot/kubecf-kubectl:v1.19.2"
+  hookDockerImage: "ghcr.io/cfcontainerizationbot/kubecf-kubectl:v1.20.2"
 
 # serviceAccount contains the configuration
 # values of the service account used by quarks-operator.
@@ -91,6 +91,7 @@ global:
     name: staging
 
 quarks-job:
+  logLevel: info
   serviceAccount:
     # create is a boolean to control the creation of service account name.
     create: true
@@ -103,3 +104,9 @@ quarks-job:
     name: qjob-persist-output
   singleNamespace:
     createNamespace: false
+
+quarks-secret:
+  logLevel: info
+
+quarks-statefulset:
+  logLevel: info

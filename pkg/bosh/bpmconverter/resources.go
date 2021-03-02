@@ -346,7 +346,7 @@ func (kc *BPMConverter) errandToQuarksJob(
 	}
 
 	podLabels := instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels
-	podLabels[qstsv1a1.LabelStartupOrdinal] = "0"
+	podLabels[qstsv1a1.LabelPodOrdinal] = "0"
 
 	defaultVolumes := defaultDisks.Volumes()
 	bpmVolumes := bpmDisks.Volumes()

@@ -2,6 +2,7 @@
 name: loggregator_trafficcontroller
 templates:
   bpm.yml.erb: config/bpm.yml
+  spec.yml.erb: config/spec.yml
 
 packages:
 - loggregator_trafficcontroller

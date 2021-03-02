@@ -52,7 +52,7 @@ var _ = Describe("BDPL Status", func() {
 			tearDowns = append(tearDowns, tearDown)
 
 			By("checking for instance group pods")
-			err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "quarks-gora", "1", 3)
+			err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "quarks-gora", 3)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			sts, err := env.GetStatefulSet(env.Namespace, "quarks-gora")

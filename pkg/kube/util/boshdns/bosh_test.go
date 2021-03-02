@@ -10,10 +10,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	crc "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	cfakes "code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/fakes"
@@ -215,7 +214,7 @@ var _ = Describe("BOSHDomainNameService", func() {
 
 				client = &cfakes.FakeClient{}
 				// Needed to get along with CreateOrUpdate
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *corev1.Namespace:
 						namespace.DeepCopyInto(object)
@@ -227,7 +226,7 @@ var _ = Describe("BOSHDomainNameService", func() {
 
 			It("creates coredns resources and generates resources", func() {
 				counter := 0
-				err := dns.Apply(context.Background(), "default", client, func(object v1.Object) error {
+				err := dns.Apply(context.Background(), "default", client, func(object metav1.Object) error {
 					counter++
 					return nil
 				})
@@ -280,7 +279,7 @@ var _ = Describe("BOSHDomainNameService", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				client = &cfakes.FakeClient{}
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *corev1.Namespace:
 						namespace.DeepCopyInto(object)
@@ -291,7 +290,7 @@ var _ = Describe("BOSHDomainNameService", func() {
 			})
 
 			It("creates coredns corefile with handler statements", func() {
-				err := dns.Apply(context.Background(), "default", client, func(object v1.Object) error { return nil })
+				err := dns.Apply(context.Background(), "default", client, func(object metav1.Object) error { return nil })
 				Expect(err).NotTo(HaveOccurred())
 
 				By("checking for handler entries in corefile")
@@ -311,7 +310,7 @@ var _ = Describe("BOSHDomainNameService", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				client = &cfakes.FakeClient{}
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *corev1.Namespace:
 						namespace.DeepCopyInto(object)
@@ -322,7 +321,7 @@ var _ = Describe("BOSHDomainNameService", func() {
 			})
 
 			It("creates coredns corefile with handler statements", func() {
-				err := dns.Apply(context.Background(), "default", client, func(object v1.Object) error { return nil })
+				err := dns.Apply(context.Background(), "default", client, func(object metav1.Object) error { return nil })
 				Expect(err).NotTo(HaveOccurred())
 
 				By("checking for handler entries in corefile")

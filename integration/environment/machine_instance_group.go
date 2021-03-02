@@ -10,20 +10,12 @@ import (
 )
 
 // WaitForInstanceGroup blocks until all selected pods of the instance group are running. It fails after the timeout.
-func (m *Machine) WaitForInstanceGroup(namespace string, deployment string, igName string, version string, count int) error {
-	return m.WaitForInstanceGroupVersions(namespace, deployment, igName, count, version)
-}
-
-// WaitForInstanceGroupVersions blocks until the specified number of pods from
-// the instance group are running.  It counts running pods from all given
-// versions. It fails after the timeout.
-func (m *Machine) WaitForInstanceGroupVersions(namespace string, deployment string, igName string, count int, versions ...string) error {
+func (m *Machine) WaitForInstanceGroup(namespace string, deployment string, igName string, count int) error {
 	labels := labels.Set(map[string]string{
 		bdv1.LabelDeploymentName:    deployment,
 		bdv1.LabelInstanceGroupName: igName,
 	}).String()
 	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
-
 		ss, err := m.GetStatefulSetByInstanceGroupName(namespace, igName)
 		if err != nil {
 			return false, nil
@@ -31,6 +23,31 @@ func (m *Machine) WaitForInstanceGroupVersions(namespace string, deployment stri
 
 		n, err := m.PodCount(namespace, labels, func(pod corev1.Pod) bool {
 			return pod.Status.Phase == corev1.PodRunning && pod.Labels[appsv1.StatefulSetRevisionLabel] == ss.Status.UpdateRevision
+		})
+		if err != nil {
+			return false, err
+		}
+		return n == count, nil
+	})
+}
+
+// WaitForInstanceGroupVersions blocks until the specified number of pods from
+// the instance group version are running. It fails after the timeout.
+func (m *Machine) WaitForInstanceGroupVersions(namespace string, deployment string, igName string, count int, versions ...string) error {
+	labels := labels.Set(map[string]string{
+		bdv1.LabelDeploymentName:    deployment,
+		bdv1.LabelInstanceGroupName: igName,
+	}).String()
+	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
+
+		ss, err := m.GetStatefulSetByInstanceGroup(namespace, igName, versions)
+		if err != nil {
+			return false, nil
+		}
+
+		n, err := m.PodCount(namespace, labels, func(pod corev1.Pod) bool {
+			return pod.Status.Phase == corev1.PodRunning &&
+				pod.Labels[appsv1.StatefulSetRevisionLabel] == ss.Status.UpdateRevision
 		})
 		if err != nil {
 			return false, err

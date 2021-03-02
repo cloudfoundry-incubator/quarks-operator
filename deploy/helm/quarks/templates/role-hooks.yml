@@ -1,0 +1,111 @@
+{{- if $.Values.global.rbac.create }}
+# generate helm hooks from contents in the `hooks` folder
+{{ range $_, $hook := tuple "pre-delete" "pre-upgrade" }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  annotations:
+    "helm.sh/hook": {{$hook}}
+    "helm.sh/hook-weight": "-2"
+    "helm.sh/hook-delete-policy": before-hook-creation
+  name: cf-operator-{{$hook}}-helm-hook
+rules:
+- apiGroups:
+  - admissionregistration.k8s.io
+  resources:
+  - mutatingwebhookconfigurations
+  verbs:
+  - delete
+
+# hooks only work in singleNamespace mode, this lists all required permissions
+# for running the scripts
+{{- if $.Values.global.singleNamespace.create }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{$hook}}-helm-hook
+  namespace: {{ $.Values.global.singleNamespace.name | quote }}
+  annotations:
+    "helm.sh/hook": {{$hook}}
+    "helm.sh/hook-weight": "-2"
+    "helm.sh/hook-delete-policy": before-hook-creation
+rules:
+- apiGroups: [quarks.cloudfoundry.org]
+  resources: [quarksjobs]
+  resourceNames: [dm]
+  verbs: [delete]
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - patch
+  - list
+- apiGroups:
+  - apps
+  resources:
+  - statefulsets
+  verbs:
+  - get
+  - list
+  - create
+  - patch
+  - update
+  - delete
+  - watch
+{{- end }}
+
+---
+apiVersion: v1
+kind: List
+metadata:
+  annotations:
+    rbac.authorization.kubernetes.io/autoupdate: "true"
+    "helm.sh/hook": {{$hook}}
+    "helm.sh/hook-weight": "-2"
+    "helm.sh/hook-delete-policy": before-hook-creation
+items:
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    metadata:
+      name: {{$hook}}-helm-hook
+      annotations:
+        rbac.authorization.kubernetes.io/autoupdate: "true"
+        "helm.sh/hook": {{$hook}}
+        "helm.sh/hook-weight": "-2"
+        "helm.sh/hook-delete-policy": before-hook-creation
+    subjects:
+    - kind: ServiceAccount
+      name: {{$hook}}-helm-hook
+      namespace: {{ $.Release.Namespace }}
+    roleRef:
+      kind: ClusterRole
+      name: cf-operator-{{$hook}}-helm-hook
+      apiGroup: rbac.authorization.k8s.io
+
+  {{- if $.Values.global.singleNamespace.create }}
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: {{$hook}}-helm-hook
+      namespace: {{ $.Values.global.singleNamespace.name | quote }}
+      annotations:
+        rbac.authorization.kubernetes.io/autoupdate: "true"
+        "helm.sh/hook": {{$hook}}
+        "helm.sh/hook-weight": "-2"
+        "helm.sh/hook-delete-policy": before-hook-creation
+    subjects:
+    - kind: ServiceAccount
+      name: {{$hook}}-helm-hook
+      namespace: {{ $.Release.Namespace }}
+    roleRef:
+      kind: Role
+      name: {{$hook}}-helm-hook
+      apiGroup: rbac.authorization.k8s.io
+  {{- end }}
+
+{{- end }}
+{{- end }}

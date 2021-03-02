@@ -27,10 +27,11 @@ var (
 		Name: EnvPodOrdinal,
 		ValueFrom: &corev1.EnvVarSource{
 			FieldRef: &corev1.ObjectFieldSelector{
-				FieldPath: "metadata.labels['quarks.cloudfoundry.org/startup-ordinal']",
+				FieldPath: "metadata.labels['quarks.cloudfoundry.org/pod-ordinal']",
 			},
 		},
 	}
+
 	replicasEnv = corev1.EnvVar{
 		Name:  EnvReplicas,
 		Value: "1",
@@ -398,6 +399,7 @@ func templateRenderingContainer(instanceGroupName string, initialRollout bool) c
 		},
 	}
 
+	// Default is true for template-render
 	if !initialRollout {
 		container.Env = append(container.Env,
 			corev1.EnvVar{
@@ -609,7 +611,7 @@ func bpmProcessContainer(
 	}
 
 	// Setup the job drain script handler.
-	drainGlob := filepath.Join(VolumeJobsDirMountPath, jobName, "bin", "drain", "*")
+	drainScript := filepath.Join(VolumeJobsDirMountPath, jobName, "bin", "drain")
 	container.Lifecycle.PreStop = &corev1.Handler{
 		Exec: &corev1.ExecAction{
 			Command: []string{
@@ -617,30 +619,30 @@ func bpmProcessContainer(
 				"-c",
 				`
 shopt -s nullglob
-for s in ` + drainGlob + `; do
-	(
-		echo "Running drain script $s"
-		while true; do
-			out=$($s)
-			status=$?
+s="` + drainScript + `"
+(
+        echo "Running drain script $s"
+        while true; do
+                out=$($s)
+                status=$?
 
-			if [ "$status" -ne "0" ]; then
-				echo "$s FAILED with exit code $status"
-				exit $status
-			fi
+                if [ "$status" -ne "0" ]; then
+                        echo "$s FAILED with exit code $status"
+                        exit $status
+                fi
 
-			if [ "$out" -lt "0" ]; then
-				echo "Sleeping dynamic draining wait time for $s..."
-				sleep ${out:1}
-				echo "Running $s again"
-			else
-				echo "Sleeping static draining wait time for $s..."
-				sleep $out
-				echo "$s done"
-				exit 0
-			fi
-		done
-	)&
+                if [ "$out" -lt "0" ]; then
+                        echo "Sleeping dynamic draining wait time for $s..."
+                        sleep ${out:1}
+                        echo "Running $s again"
+                else
+                        echo "Sleeping static draining wait time for $s..."
+                        sleep $out
+                        echo "$s done"
+                        exit 0
+                fi
+        done
+)&
 done
 echo "Waiting for subprocesses to finish..."
 wait

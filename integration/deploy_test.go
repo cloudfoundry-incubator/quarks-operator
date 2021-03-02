@@ -77,7 +77,7 @@ var _ = Describe("Deploy", func() {
 			tearDowns = append(tearDowns, tearDown)
 
 			By("checking for instance group pods")
-			err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "quarks-gora", "1", 2)
+			err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "quarks-gora", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			By("checking for services")
@@ -121,7 +121,7 @@ var _ = Describe("Deploy", func() {
 			tearDowns = append(tearDowns, tearDown)
 
 			By("checking for instance group pods")
-			err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "quarks-gora", "1", 3)
+			err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "quarks-gora", 3)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			sts, err := env.GetStatefulSet(env.Namespace, "quarks-gora")
@@ -170,7 +170,7 @@ var _ = Describe("Deploy", func() {
 			tearDowns = append(tearDowns, tearDown)
 
 			By("checking for instance group pods")
-			err = env.WaitForInstanceGroup(env.Namespace, "diego", "file_server", "1", 2)
+			err = env.WaitForInstanceGroup(env.Namespace, "diego", "file_server", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			By("checking for containers")
@@ -201,7 +201,7 @@ var _ = Describe("Deploy", func() {
 			tearDowns = append(tearDowns, tearDown)
 
 			By("checking for instance group pods")
-			err = env.WaitForInstanceGroup(env.Namespace, "bph", "route_registrar", "1", 2)
+			err = env.WaitForInstanceGroup(env.Namespace, "bph", "route_registrar", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			By("checking for containers")
@@ -228,7 +228,7 @@ var _ = Describe("Deploy", func() {
 			tearDowns = append(tearDowns, tearDown)
 
 			By("checking for instance group pods")
-			err = env.WaitForInstanceGroup(env.Namespace, "routing", "route_registrar", "1", 2)
+			err = env.WaitForInstanceGroup(env.Namespace, "routing", "route_registrar", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			By("checking for containers")
@@ -298,7 +298,7 @@ var _ = Describe("Deploy", func() {
 			tearDowns = append(tearDowns, tearDown)
 
 			By("checking for instance group pods")
-			err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "quarks-gora", "1", 2)
+			err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "quarks-gora", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 		})
 

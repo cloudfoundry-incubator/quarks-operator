@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
-	"k8s.io/api/admission/v1beta1"
+	v1 "k8s.io/api/admission/v1"
 	admissionregistration "k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -133,7 +133,7 @@ func (v *Validator) Handle(ctx context.Context, req admission.Request) admission
 	}
 
 	return admission.Response{
-		AdmissionResponse: v1beta1.AdmissionResponse{
+		AdmissionResponse: v1.AdmissionResponse{
 			Allowed: true,
 		},
 	}
@@ -141,7 +141,7 @@ func (v *Validator) Handle(ctx context.Context, req admission.Request) admission
 
 func denied(msg string) admission.Response {
 	return admission.Response{
-		AdmissionResponse: v1beta1.AdmissionResponse{
+		AdmissionResponse: v1.AdmissionResponse{
 			Allowed: false,
 			Result:  &metav1.Status{Message: msg},
 		},

@@ -73,7 +73,7 @@ type ReconcileBPM struct {
 
 // Reconcile reconciles an Instance Group BPM versioned secret read the corresponding
 // desired manifest. It then applies BPM information and deploys instance groups.
-func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileBPM) Reconcile(_ context.Context, request reconcile.Request) (reconcile.Result, error) {
 	// Set the ctx to be Background, as the top-level context for incoming requests.
 	ctx, cancel := context.WithTimeout(r.ctx, r.config.CtxTimeOut)
 	defer cancel()

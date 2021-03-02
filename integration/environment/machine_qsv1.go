@@ -23,6 +23,8 @@ import (
 	clientscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
+
+	qstsv1 "code.cloudfoundry.org/quarks-statefulset/pkg/kube/apis/quarksstatefulset/v1alpha1"
 )
 
 // GetStatefulSet gets a StatefulSet by namespace and name
@@ -49,6 +51,33 @@ func (m *Machine) GetStatefulSetByInstanceGroupName(namespace string, name strin
 	}
 
 	return &statefulSets.Items[0], nil
+}
+
+// GetStatefulSetByInstanceGroup gets a StatefulSet by namespace and an instance group name and version
+func (m *Machine) GetStatefulSetByInstanceGroup(namespace string, name string, versions []string) (*appsv1.StatefulSet, error) {
+	statefulSets, err := m.Clientset.AppsV1().StatefulSets(namespace).List(context.Background(), metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("quarks.cloudfoundry.org/instance-group-name=%s", name),
+	})
+	if err != nil {
+		return &appsv1.StatefulSet{}, errors.Wrapf(err, "failed to query for statefulSet by name: %v", name)
+	}
+
+	for _, sts := range statefulSets.Items {
+		if contains(versions, sts.Annotations[qstsv1.AnnotationVersion]) {
+			return &sts, nil
+		}
+	}
+
+	return nil, errors.Errorf("expected 1 matching statefulset '%s' for version '%v', found %d candidates", name, versions, len(statefulSets.Items))
+}
+
+func contains(versions []string, version string) bool {
+	for _, a := range versions {
+		if a == version {
+			return true
+		}
+	}
+	return false
 }
 
 // WaitForPodLabelToExist blocks until the specified label appears

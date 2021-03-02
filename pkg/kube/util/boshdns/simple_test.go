@@ -17,7 +17,9 @@ var _ = Describe("SimpleDomainNameService", func() {
 	Context("Apply", func() {
 		It("does nothing", func() {
 			dns := boshdns.NewSimpleDomainNameService()
-			client := fake.NewFakeClientWithScheme(runtime.NewScheme())
+			client := fake.NewClientBuilder().
+				WithScheme(runtime.NewScheme()).
+				Build()
 			err := dns.Apply(context.Background(), "default", client, func(object v1.Object) error {
 				return nil
 			})
