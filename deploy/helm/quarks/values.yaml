@@ -88,7 +88,7 @@ global:
     # create is a boolean to control the creation of resources for a simplified setup
     create: true
     # name is  the name of the single namespace, being watched for BOSH deployments.
-    name: staging
+    name: kubecf
 
 quarks-job:
   logLevel: info
