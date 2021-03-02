@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "cf-operator.fullname" . }}
+  name: {{ template "cf-operator.name" . }}
   namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1

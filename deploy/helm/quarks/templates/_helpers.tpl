@@ -16,7 +16,7 @@ If release name contains chart name it will be used as a full name.
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
 {{- $name := default .Chart.Name .Values.nameOverride -}}
-{{- if contains $name .Release.Name -}}
+{{- if contains $name .Release.Namespace -}}
 {{- .Release.Namespace | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
 {{- printf "%s-%s" .Release.Namespace $name | trunc 63 | trimSuffix "-" -}}
@@ -36,7 +36,7 @@ Create the name of the cf-operator service account to use
 */}}
 {{- define "cf-operator.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create -}}
-    {{ default (include "cf-operator.fullname" .) .Values.serviceAccount.name }}
+    {{ default (include "cf-operator.name" .) .Values.serviceAccount.name }}
 {{- else -}}
     {{ default "default" .Values.serviceAccount.name }}
 {{- end -}}
