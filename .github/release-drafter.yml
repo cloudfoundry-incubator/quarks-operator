@@ -28,10 +28,11 @@ template: |
 
       # Use this if you've never installed the operator before
       helm repo add quarks https://cloudfoundry-incubator.github.io/quarks-helm/
-      helm install cf-operator quarks/cf-operator --wait
+      helm install quarks quarks/quarks --wait
 
       # For more options look at the README for the chart
-      helm show readme quarks/cf-operator
+      helm show readme quarks/quarks
+
 
   # Assets
 
