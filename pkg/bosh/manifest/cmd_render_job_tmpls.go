@@ -91,10 +91,8 @@ func RenderJobTemplates(
 
 	// Generate Job Instances Spec
 	for jobIdx, job := range ig.Jobs {
-		// Generate instance spec for each ig instance
-		// This will be stored inside the current job under
-		// job.properties.quarks
-		// TODO this has pre generated indexes
+		// Generate instance spec for each ig instance, so templates
+		// can access all instance specs.
 		jobInstances := ig.newJobInstances(job.Name, initialRollout)
 		ig.Jobs[jobIdx].Properties.Quarks.Instances = jobInstances
 	}
@@ -114,10 +112,9 @@ func RenderJobTemplates(
 	//    2       0          10000
 	//    2       1          10001
 	specIndex := names.SpecIndex(azIndex, podOrdinal)
-	// TODO Why are we not using the label?
 
+	// Render all files for all jobs included in this instance_group in parallel.
 	jobGroup := errgroup.Group{}
-	// Render all files for all jobs included in this instance_group.
 	for _, job := range ig.Jobs {
 
 		job := job // https://golang.org/doc/faq#closures_and_goroutines

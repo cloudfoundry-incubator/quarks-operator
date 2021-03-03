@@ -154,7 +154,6 @@ var _ = Describe("RenderJobTemplates", func() {
 			azIndex = 1
 		})
 
-
 		It("renders the configuration erb file correctly", func() {
 			err := act()
 			Expect(err).ToNot(HaveOccurred())

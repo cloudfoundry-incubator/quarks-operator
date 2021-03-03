@@ -333,7 +333,7 @@ jobs:
         git config --global core.editor "cat"
         git config --global credential.helper cache
         git config credential.https://github.com.username CFContainerizationBot
-        git pull-request --no-fork --title "Update cf-operator dependency." --message "Increment cf-operator version in def.bzl file."
+        git pull-request --no-fork --title "feat: update cf-operator dependency." --message "Increment quarks-operator version in def.bzl file."
       env:
         sha: "${{ steps.build_helm.outputs.sha }}"
         version: "${{ steps.get_version.outputs.artifact_version }}"
