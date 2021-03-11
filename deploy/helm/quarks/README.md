@@ -21,6 +21,11 @@ The operator will watch for BOSH deployments in separate namespaces (default: on
 
 ### Using multiple operators
 
+This feature is not tested.
+
+Each operator has to go into its own namespace.
+At least the `quarks-job.persistOutputClusterRole.name`, `corednsServiceAccount.name` and the `global.monitoredID` should manually be set to a unique value, for each operator.
+
 Choose different namespaces and cluster role names. The persist output service account will be named the same as the cluster role as well as for coredns:
 
 ```
@@ -33,6 +38,8 @@ helm install qops1 quarks/quarks \
 ```
 
 ### Using multiple namespaces with one operator
+
+This feature is not tested and not well supported by the helm charts, i.e. migration hooks will not run automatically.
 
 The cluster role can be reused between namespaces.
 The service account (and role binding) should be different for each namespace.
