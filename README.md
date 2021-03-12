@@ -1,7 +1,7 @@
 # Quarks-operator
 
 [![godoc](https://godoc.org/code.cloudfoundry.org/quarks-operator?status.svg)](https://godoc.org/code.cloudfoundry.org/quarks-operator)
-[![master](https://ci.flintstone.cf.cloud.ibm.com/api/v1/teams/quarks/pipelines/cf-operator/badge)](https://ci.flintstone.cf.cloud.ibm.com/teams/quarks/pipelines/cf-operator)
+[![ci](https://github.com/cloudfoundry-incubator/quarks-operator/actions/workflows/ci.yaml/badge.svg)](https://github.com/cloudfoundry-incubator/quarks-operator/actions/workflows/ci.yaml)
 [![go report card](https://goreportcard.com/badge/code.cloudfoundry.org/quarks-operator)](https://goreportcard.com/report/code.cloudfoundry.org/quarks-operator)
 [![Coveralls github](https://img.shields.io/coveralls/github/cloudfoundry-incubator/quarks-operator.svg?style=flat)](https://coveralls.io/github/cloudfoundry-incubator/quarks-operator?branch=HEAD)
 
