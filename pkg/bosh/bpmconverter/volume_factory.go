@@ -97,7 +97,7 @@ func (f *VolumeFactoryImpl) GenerateDefaultDisks(instanceGroup *bdm.InstanceGrou
 		pvc = ephemeralPVC(instanceGroup, namespace)
 	}
 
-	defaultDisks := bdm.Disks{
+	return bdm.Disks{
 		{
 			Volume:      renderingVolume(),
 			VolumeMount: renderingVolumeMount(),
@@ -127,8 +127,6 @@ func (f *VolumeFactoryImpl) GenerateDefaultDisks(instanceGroup *bdm.InstanceGrou
 			Volume: resolvedPropertiesVolume(resolvedPropertiesSecretName),
 		},
 	}
-
-	return defaultDisks
 }
 
 // GenerateBPMDisks defines any other volumes required to be mounted,
