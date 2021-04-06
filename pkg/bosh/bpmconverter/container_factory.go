@@ -92,3 +92,21 @@ func capability(s []string) []corev1.Capability {
 	}
 	return capabilities
 }
+
+func proccessVolumentMounts(defaultVolumeMounts []corev1.VolumeMount, processDisks bdm.Disks, ephemeralMount *corev1.VolumeMount, persistentDiskMount *corev1.VolumeMount) []corev1.VolumeMount {
+	bpmVolumeMounts := make([]corev1.VolumeMount, 0)
+	for _, processDisk := range processDisks {
+		bpmVolumeMounts = append(bpmVolumeMounts, *processDisk.VolumeMount)
+	}
+
+	v := append(defaultVolumeMounts, bpmVolumeMounts...)
+
+	if ephemeralMount != nil {
+		v = append(v, *ephemeralMount)
+	}
+	if persistentDiskMount != nil {
+		v = append(v, *persistentDiskMount)
+	}
+
+	return v
+}

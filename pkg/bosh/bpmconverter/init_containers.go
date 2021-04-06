@@ -40,19 +40,19 @@ func (c *ContainerFactoryImpl) JobsToInitContainers(
 			copyingSpecsInitContainers = append(copyingSpecsInitContainers, copyingSpecsInitContainer)
 		}
 
-		// Setup the BPM pre-start init containers before the BOSH pre-start init container in order to
-		// collect all the extra BPM volumes and pass them to the BOSH pre-start init container.
 		bpmConfig, ok := c.bpmConfigs[job.Name]
 		if !ok {
 			return []corev1.Container{}, errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs", job.Name)
 		}
 
 		jobDisks := bpmDisks.Filter("job_name", job.Name)
+
 		var ephemeralMount *corev1.VolumeMount
 		ephemeralDisks := jobDisks.Filter("ephemeral", "true")
 		if len(ephemeralDisks) > 0 {
 			ephemeralMount = ephemeralDisks[0].VolumeMount
 		}
+
 		var persistentDiskMount *corev1.VolumeMount
 		persistentDiskDisks := jobDisks.Filter("persistent", "true")
 		if len(persistentDiskDisks) > 0 {
@@ -62,21 +62,10 @@ func (c *ContainerFactoryImpl) JobsToInitContainers(
 		for _, process := range bpmConfig.Processes {
 			if process.Hooks.PreStart != "" {
 				processDisks := jobDisks.Filter("process_name", process.Name)
-				bpmVolumeMounts := make([]corev1.VolumeMount, 0)
-				for _, processDisk := range processDisks {
-					bpmVolumeMounts = append(bpmVolumeMounts, *processDisk.VolumeMount)
-				}
-				processVolumeMounts := append(defaultVolumeMounts, bpmVolumeMounts...)
-				if ephemeralMount != nil {
-					processVolumeMounts = append(processVolumeMounts, *ephemeralMount)
-				}
-				if persistentDiskMount != nil {
-					processVolumeMounts = append(processVolumeMounts, *persistentDiskMount)
-				}
 				container := bpmPreStartInitContainer(
 					process,
 					jobImage,
-					processVolumeMounts,
+					proccessVolumentMounts(defaultVolumeMounts, processDisks, ephemeralMount, persistentDiskMount),
 					bpmConfig.Debug,
 					bpmConfig.Run.SecurityContext.DeepCopy(),
 				)
@@ -85,7 +74,8 @@ func (c *ContainerFactoryImpl) JobsToInitContainers(
 			}
 		}
 
-		// Setup the BOSH pre-start init container for the job.
+		// Setup the BPM pre-start init containers before the BOSH pre-start init container in order to
+		// collect all the extra BPM volumes and pass them to the BOSH pre-start init container.
 		boshPreStartInitContainer := boshPreStartInitContainer(
 			job.Name,
 			jobImage,

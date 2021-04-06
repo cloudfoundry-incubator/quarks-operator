@@ -55,17 +55,6 @@ func (c *ContainerFactoryImpl) JobsToContainers(
 
 		for processIndex, process := range bpmConfig.Processes {
 			processDisks := jobDisks.Filter("process_name", process.Name)
-			bpmVolumeMounts := make([]corev1.VolumeMount, 0)
-			for _, processDisk := range processDisks {
-				bpmVolumeMounts = append(bpmVolumeMounts, *processDisk.VolumeMount)
-			}
-			processVolumeMounts := append(defaultVolumeMounts, bpmVolumeMounts...)
-			if ephemeralMount != nil {
-				processVolumeMounts = append(processVolumeMounts, *ephemeralMount)
-			}
-			if persistentDiskMount != nil {
-				processVolumeMounts = append(processVolumeMounts, *persistentDiskMount)
-			}
 
 			// The post-start script should be executed only once per job, so we set it up in the first
 			// process container.
@@ -89,7 +78,7 @@ func (c *ContainerFactoryImpl) JobsToContainers(
 				process.Name,
 				jobImage,
 				process,
-				processVolumeMounts,
+				proccessVolumentMounts(defaultVolumeMounts, processDisks, ephemeralMount, persistentDiskMount),
 				bpmConfig.Run.HealthCheck,
 				job.Properties.Quarks.Envs,
 				bpmConfig.Run.SecurityContext.DeepCopy(),
