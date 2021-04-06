@@ -83,6 +83,7 @@ func (c *ContainerFactoryImpl) JobsToContainers(
 				job.Properties.Quarks.Envs,
 				bpmConfig.Run.SecurityContext.DeepCopy(),
 				postStart,
+				strconv.Itoa(len(bpmConfig.Processes)),
 			)
 			if err != nil {
 				return []corev1.Container{}, err
@@ -149,6 +150,7 @@ func bpmProcessContainer(
 	quarksEnvs []corev1.EnvVar,
 	securityContext *corev1.SecurityContext,
 	postStart postStart,
+	processCount string,
 ) (corev1.Container, error) {
 	name := names.Sanitize(fmt.Sprintf("%s-%s", jobName, processName))
 
@@ -221,8 +223,17 @@ func bpmProcessContainer(
 				"-c",
 				`
 shopt -s nullglob
+waitExit() {
+	e="$1"
+	touch /mnt/drain-done/` + container.Name + `
+	while [ $(ls -1 /mnt/drain-done | wc -l) -lt ` + processCount + ` ]; do sleep 5; done
+	exit "$e"
+}
 s="` + drainScript + `"
 (
+	if [ ! -x "$s" ]; then
+		waitExit 0
+	fi
         echo "Running drain script $s"
         while true; do
                 out=$($s)
@@ -230,7 +241,7 @@ s="` + drainScript + `"
 
                 if [ "$status" -ne "0" ]; then
                         echo "$s FAILED with exit code $status"
-                        exit $status
+                        waitExit $status
                 fi
 
                 if [ "$out" -lt "0" ]; then
@@ -241,7 +252,7 @@ s="` + drainScript + `"
                         echo "Sleeping static draining wait time for $s..."
                         sleep $out
                         echo "$s done"
-                        exit 0
+                        waitExit 0
                 fi
         done
 )&

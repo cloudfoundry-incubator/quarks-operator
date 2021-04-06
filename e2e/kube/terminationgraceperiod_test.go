@@ -69,8 +69,10 @@ var _ = Describe("Instance group", func() {
 			// Make sure the gora container is up and running and it exceeds default 30s from Kubernetes.
 			// As we have setted up graceTime as terminationGrace and we expect the drain job to not terminate, the quarks-gora
 			// container should be up meanwhile the drain is running. We leave 10 extra seconds to avoid test flakyness
-			Consistently(isUp, time.Duration(time.Duration(graceTime-10)*time.Second), time.Duration(1*time.Second)).Should(BeTrue())
+			By("checking the pod stays up")
+			Consistently(isUp, time.Duration(time.Duration(graceTime-10)*time.Second), time.Duration(1*time.Second)).Should(BeTrue(), "pod failed to be up")
 
+			By("checking a new pod starts up")
 			// Eventually, we should have a new pod as we exhaust the terminationGrace. Uses graceTime^2 as time window (not using pow for opt.)
 			Eventually(differentUID, time.Duration(time.Duration(graceTime*graceTime)*time.Second), time.Duration(1*time.Second)).Should(BeFalse())
 

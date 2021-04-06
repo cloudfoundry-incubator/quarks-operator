@@ -43,6 +43,11 @@ const (
 	// VolumeSysDirMountPath is the mount path for the sys directory.
 	VolumeSysDirMountPath = bdm.SysDir
 
+	// VolumeDrainStampsName is the volume name for the drain-stamps directory.
+	VolumeDrainStampsName = "drain-stamps"
+	// VolumeDrainStampsMountPath is the mount path for the drain-stamps directory.
+	VolumeDrainStampsMountPath = "/mnt/drain-stamps"
+
 	// VolumeStoreDirMountPath is the mount path for the store directory.
 	VolumeStoreDirMountPath = "/var/vcap/store"
 
@@ -69,7 +74,7 @@ const (
 	defaultEphemeralVolumeSize = 10240
 )
 
-// VolumeFactoryImpl is a concrete implementation of VolumeFactoryImpl
+// VolumeFactoryImpl is a concrete implementation of VolumeFactory
 type VolumeFactoryImpl struct {
 }
 
@@ -85,6 +90,7 @@ func NewVolumeFactory() *VolumeFactoryImpl {
 // - the sys volume
 // - the "not interpolated" manifest volume
 // - resolved properties data volume
+// - shared empty dir for drain-stamps files
 func (f *VolumeFactoryImpl) GenerateDefaultDisks(instanceGroup *bdm.InstanceGroup, igResolvedSecretVersion string, namespace string) bdm.Disks {
 	resolvedPropertiesSecretName := boshnames.InstanceGroupSecretName(
 		instanceGroup.Name,
@@ -125,6 +131,18 @@ func (f *VolumeFactoryImpl) GenerateDefaultDisks(instanceGroup *bdm.InstanceGrou
 		},
 		{
 			Volume: resolvedPropertiesVolume(resolvedPropertiesSecretName),
+		},
+		{
+			Volume: &corev1.Volume{
+				Name: VolumeDrainStampsName,
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory},
+				},
+			},
+			VolumeMount: &corev1.VolumeMount{
+				Name:      VolumeDrainStampsName,
+				MountPath: VolumeDrainStampsMountPath,
+			},
 		},
 	}
 }
