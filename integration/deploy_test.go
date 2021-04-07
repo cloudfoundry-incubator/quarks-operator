@@ -406,36 +406,6 @@ var _ = Describe("Deploy", func() {
 			Expect(err.Error()).To(ContainSubstring("Timeout reached. Resources 'configmap/bosh-ops-unknown' do not exist"))
 			tearDowns = append(tearDowns, tearDown)
 		})
-
-		It("failed to deploy if the ops resource is not available before timeout", func(done Done) {
-			ch := make(chan machine.ChanResult)
-
-			go env.CreateBOSHDeploymentUsingChan(ch, env.Namespace, env.DefaultBOSHDeploymentWithOps(deploymentName, manifestName, "bosh-ops"))
-
-			time.Sleep(8 * time.Second)
-
-			// Generate the right ops resource, so that the above goroutine will not end in error
-			_, err := env.CreateConfigMap(env.Namespace, env.CustomOpsConfigMap("bosh-ops", opOneInstance))
-			Expect(err).NotTo(HaveOccurred())
-
-			chanReceived := <-ch
-			Expect(chanReceived.Error).To(HaveOccurred())
-			close(done)
-		}, 10)
-
-		It("does not failed to deploy if the ops ref is created on time", func(done Done) {
-			ch := make(chan machine.ChanResult)
-			go env.CreateBOSHDeploymentUsingChan(ch, env.Namespace, env.DefaultBOSHDeploymentWithOps(deploymentName, manifestName, "bosh-ops"))
-
-			// Generate the right ops resource, so that the above goroutine will not end in error
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.CustomOpsConfigMap("bosh-ops", opOneInstance))
-			Expect(err).NotTo(HaveOccurred())
-			tearDowns = append(tearDowns, tearDown)
-
-			chanReceived := <-ch
-			Expect(chanReceived.Error).NotTo(HaveOccurred())
-			close(done)
-		}, 5)
 	})
 
 	Context("when a BOSHDeployment already exists in the namespace", func() {
