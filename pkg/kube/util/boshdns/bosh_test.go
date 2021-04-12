@@ -265,9 +265,9 @@ var _ = Describe("BOSHDomainNameService", func() {
 
 				By("checking for entries for diego-cells in mutli-zone")
 				Expect(corefile).To(ContainSubstring(`
-	template IN A diego-cell-z0-0.cell.service.cf.internal {
-		match ^diego-cell-z0-0\.cell\.service\.cf\.internal\.$
-		answer "{{ .Name }} 60 IN CNAME diego-cell-z0-0.default.svc."
+	template IN A diego-cell-az1-0.cell.service.cf.internal {
+		match ^diego-cell-az1-0\.cell\.service\.cf\.internal\.$
+		answer "{{ .Name }} 60 IN CNAME diego-cell-az1-0.default.svc."
 		fallthrough`))
 			})
 		})

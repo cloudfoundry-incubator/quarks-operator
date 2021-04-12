@@ -231,6 +231,7 @@ var _ = Describe("BPM Converter", func() {
 						bdv1.LabelDeploymentName:    deploymentName,
 						bdv1.LabelInstanceGroupName: stS.Name,
 						qstsv1a1.LabelAZIndex:       "0",
+						qstsv1a1.LabelAZName:        "z1",
 						qstsv1a1.LabelPodOrdinal:    "0",
 						qstsv1a1.LabelActivePod:     "active",
 					}))
@@ -266,11 +267,12 @@ var _ = Describe("BPM Converter", func() {
 
 					// Test services for the quarks statefulSet
 					service0 := resources.Services[0]
-					Expect(service0.Name).To(Equal(fmt.Sprintf("%s-z%d-0", stS.Name, 0)))
+					Expect(service0.Name).To(Equal(fmt.Sprintf("%s-%s-0", stS.Name, m.InstanceGroups[1].AZs[0])))
 					Expect(service0.Spec.Selector).To(Equal(map[string]string{
 						bdv1.LabelDeploymentName:    deploymentName,
 						bdv1.LabelInstanceGroupName: stS.Name,
 						qstsv1a1.LabelAZIndex:       "0",
+						qstsv1a1.LabelAZName:        "z1",
 						qstsv1a1.LabelPodOrdinal:    "0",
 					}))
 					Expect(service0.Spec.Ports).To(Equal([]corev1.ServicePort{
@@ -282,11 +284,12 @@ var _ = Describe("BPM Converter", func() {
 					}))
 
 					service1 := resources.Services[1]
-					Expect(service1.Name).To(Equal(fmt.Sprintf("%s-z%d-1", stS.Name, 0)))
+					Expect(service1.Name).To(Equal(fmt.Sprintf("%s-%s-1", stS.Name, m.InstanceGroups[1].AZs[0])))
 					Expect(service1.Spec.Selector).To(Equal(map[string]string{
 						bdv1.LabelDeploymentName:    deploymentName,
 						bdv1.LabelInstanceGroupName: stS.Name,
 						qstsv1a1.LabelAZIndex:       "0",
+						qstsv1a1.LabelAZName:        "z1",
 						qstsv1a1.LabelPodOrdinal:    "1",
 					}))
 					Expect(service1.Spec.Ports).To(Equal([]corev1.ServicePort{
@@ -298,11 +301,12 @@ var _ = Describe("BPM Converter", func() {
 					}))
 
 					service2 := resources.Services[2]
-					Expect(service2.Name).To(Equal(fmt.Sprintf("%s-z%d-0", stS.Name, 1)))
+					Expect(service2.Name).To(Equal(fmt.Sprintf("%s-%s-0", stS.Name, m.InstanceGroups[1].AZs[1])))
 					Expect(service2.Spec.Selector).To(Equal(map[string]string{
 						bdv1.LabelDeploymentName:    deploymentName,
 						bdv1.LabelInstanceGroupName: stS.Name,
 						qstsv1a1.LabelAZIndex:       "1",
+						qstsv1a1.LabelAZName:        "z2",
 						qstsv1a1.LabelPodOrdinal:    "0",
 					}))
 					Expect(service2.Spec.Ports).To(Equal([]corev1.ServicePort{
@@ -314,11 +318,12 @@ var _ = Describe("BPM Converter", func() {
 					}))
 
 					service3 := resources.Services[3]
-					Expect(service3.Name).To(Equal(fmt.Sprintf("%s-z%d-1", stS.Name, 1)))
+					Expect(service3.Name).To(Equal(fmt.Sprintf("%s-%s-1", stS.Name, m.InstanceGroups[1].AZs[1])))
 					Expect(service3.Spec.Selector).To(Equal(map[string]string{
 						bdv1.LabelDeploymentName:    deploymentName,
 						bdv1.LabelInstanceGroupName: stS.Name,
 						qstsv1a1.LabelAZIndex:       "1",
+						qstsv1a1.LabelAZName:        "z2",
 						qstsv1a1.LabelPodOrdinal:    "1",
 					}))
 					Expect(service3.Spec.Ports).To(Equal([]corev1.ServicePort{

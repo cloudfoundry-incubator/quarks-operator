@@ -104,10 +104,10 @@ func (ig *InstanceGroup) NameSanitized() string {
 
 // IndexedServiceName constructs an indexed service name. It's used to construct the service
 // names other than the headless service.
-func (ig *InstanceGroup) IndexedServiceName(index int, azIndex int) string {
+func (ig *InstanceGroup) IndexedServiceName(index int, azIndex int, azName string) string {
 	sn := boshnames.TruncatedServiceName(ig.Name, 53)
 	if azIndex > -1 {
-		return fmt.Sprintf("%s-z%d-%d", sn, azIndex, index)
+		return fmt.Sprintf("%s-%s-%d", sn, azName, index)
 	}
 	return fmt.Sprintf("%s-%d", sn, index)
 }
@@ -139,7 +139,7 @@ func (ig *InstanceGroup) jobInstances(
 		//specIndex := names.SpecIndex(azIndex+1, i))
 
 		jobsInstances = append(jobsInstances, JobInstance{
-			Address:   ig.IndexedServiceName(i, -1),
+			Address:   ig.IndexedServiceName(i, -1, ""),
 			AZ:        "",
 			Bootstrap: i == bootstrapIndex,
 			Index:     i,
@@ -169,13 +169,13 @@ func (ig *InstanceGroup) jobInstancesAZ(
 			index := len(jobsInstances)
 
 			jobsInstances = append(jobsInstances, JobInstance{
-				Address:   ig.IndexedServiceName(i, azIndex),
+				Address:   ig.IndexedServiceName(i, azIndex, az),
 				AZ:        az,
 				Bootstrap: index == bootstrapIndex,
 				Index:     index,
 				Instance:  i,
 				Name:      fmt.Sprintf("%s-%s", igName, jobName),
-				ID:        fmt.Sprintf("%s-z%d-%d", igName, azIndex, index%ig.Instances),
+				ID:        fmt.Sprintf("%s-%s-%d", igName, az, index%ig.Instances),
 			})
 		}
 	}

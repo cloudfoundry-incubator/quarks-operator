@@ -105,11 +105,11 @@ var _ = Describe("RenderJobTemplates", func() {
 			// will use the instance at the index provided to the RenderJobTemplates func().
 			Expect(values.Env["FOOBARWITHSPECAZ"]).To(Equal("z1"))
 			Expect(values.Env["FOOBARWITHSPECBOOTSTRAP"]).To(Equal("true"))
-			Expect(values.Env["FOOBARWITHSPECID"]).To(Equal("log-api-z0-0"))
+			Expect(values.Env["FOOBARWITHSPECID"]).To(Equal("log-api-z1-0"))
 			Expect(values.Env["FOOBARWITHSPECINDEX"]).To(Equal("0"))
 			Expect(values.Env["FOOBARWITHSPECNAME"]).To(Equal("log-api-loggregator_trafficcontroller"))
 			Expect(values.Env["FOOBARWITHSPECNETWORKS"]).To(Equal(""))
-			Expect(values.Env["FOOBARWITHSPECADDRESS"]).To(Equal("log-api-z0-0"))
+			Expect(values.Env["FOOBARWITHSPECADDRESS"]).To(Equal("log-api-z1-0"))
 			Expect(values.Env["FOOBARWITHSPECDEPLOYMENT"]).To(Equal(""))
 			Expect(values.Env["FOOBARWITHSPECIP"]).To(Equal("172.17.0.13"))
 		})
@@ -217,16 +217,16 @@ var _ = Describe("RenderJobTemplates", func() {
 			It("renders the job erb files correctly", func() {
 				tests := cases{
 					// two az
-					{0, 0, 1, true, "log-api-z0-0", "z1", "0", "true"},
-					{1, 1, 1, true, "log-api-z0-1", "z1", "1", "false"},
-					{0, 0, 2, true, "log-api-z1-0", "z2", "2", "false"},
-					{1, 1, 2, true, "log-api-z1-1", "z2", "3", "false"},
+					{0, 0, 1, true, "log-api-z1-0", "z1", "0", "true"},
+					{1, 1, 1, true, "log-api-z1-1", "z1", "1", "false"},
+					{0, 0, 2, true, "log-api-z2-0", "z2", "2", "false"},
+					{1, 1, 2, true, "log-api-z2-1", "z2", "3", "false"},
 
 					// // two az, updated
-					{0, 1, 1, false, "log-api-z0-0", "z1", "0", "false"},
-					{1, 0, 1, false, "log-api-z0-1", "z1", "1", "false"}, // TODO would have expected this to be bootstrap
-					{0, 1, 2, false, "log-api-z1-0", "z2", "2", "false"},
-					{1, 0, 2, false, "log-api-z1-1", "z2", "3", "true"},
+					{0, 1, 1, false, "log-api-z1-0", "z1", "0", "false"},
+					{1, 0, 1, false, "log-api-z1-1", "z1", "1", "false"}, // TODO would have expected this to be bootstrap
+					{0, 1, 2, false, "log-api-z2-0", "z2", "2", "false"},
+					{1, 0, 2, false, "log-api-z2-1", "z2", "3", "true"},
 
 					// TODO two az, happily generates out of bounds - nothing we can do, replicas is automatically increased
 					// {20, 20, 1, true, "log-api-z0-20", "z1", "20", "false"},
@@ -256,12 +256,12 @@ var _ = Describe("RenderJobTemplates", func() {
 			It("renders the job erb files correctly", func() {
 				tests := cases{
 					// single az
-					{0, 0, 1, true, "log-api-z0-0", "z1", "0", "true"},
-					{1, 1, 1, true, "log-api-z0-1", "z1", "1", "false"},
+					{0, 0, 1, true, "log-api-z1-0", "z1", "0", "true"},
+					{1, 1, 1, true, "log-api-z1-1", "z1", "1", "false"},
 
 					// single az, updated
-					{0, 1, 1, false, "log-api-z0-0", "z1", "0", "false"},
-					{1, 0, 1, false, "log-api-z0-1", "z1", "1", "true"},
+					{0, 1, 1, false, "log-api-z1-0", "z1", "0", "false"},
+					{1, 0, 1, false, "log-api-z1-1", "z1", "1", "true"},
 				}
 
 				for i, t := range tests {
