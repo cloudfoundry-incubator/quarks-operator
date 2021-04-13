@@ -632,7 +632,7 @@ var _ = Describe("BPM Converter", func() {
 					containers := resources.InstanceGroups[0].Spec.Template.Spec.Template.Spec.Containers
 
 					// Test shared volume setup
-					Expect(len(volumes)).To(Equal(7))
+					Expect(volumes).To(HaveLen(8))
 					Expect(volumes).To(ContainElement(
 						corev1.Volume{
 							Name:         "extravolume",

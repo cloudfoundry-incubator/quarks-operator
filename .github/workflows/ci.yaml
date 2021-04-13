@@ -35,9 +35,6 @@ jobs:
       run: |
         sudo gem install bosh-template
         go install github.com/onsi/ginkgo/ginkgo
-        go get -u golang.org/x/lint/golint
-        curl -LO https://github.com/dominikh/go-tools/releases/download/2020.2.2/staticcheck_linux_amd64.tar.gz
-        sudo tar xfz staticcheck_linux_amd64.tar.gz --strip-component 1 -C $GOPATH/bin staticcheck/staticcheck
     - name: Install shared tools
       run: |
         bin/tools
@@ -289,7 +286,6 @@ jobs:
         DOCKER_IMAGE_REPOSITORY: "${{ env.DOCKER_RELEASE_REPOSITORY }}"
         ARTIFACT_VERSION: "${{ steps.get_version.outputs.artifact_version }}"
         DOCKER_IMAGE_TAG: "${{ steps.get_version.outputs.artifact_version }}"
-        RELEASE: "true"
       id: build_helm
 
     - uses: actions/setup-python@v2

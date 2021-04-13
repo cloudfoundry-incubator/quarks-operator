@@ -47,7 +47,7 @@ var _ = Describe("VolumeFactory", func() {
 		It("creates default disks", func() {
 			disks := factory.GenerateDefaultDisks(instanceGroup, version, namespace)
 
-			Expect(disks).Should(HaveLen(5))
+			Expect(disks).Should(HaveLen(6))
 			Expect(disks).Should(ContainElement(bdm.Disk{
 				Volume: &corev1.Volume{
 					Name:         VolumeRenderingDataName,
