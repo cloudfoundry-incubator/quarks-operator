@@ -225,8 +225,8 @@ func bpmProcessContainer(
 shopt -s nullglob
 waitExit() {
 	e="$1"
-	touch /mnt/drain-done/` + container.Name + `
-	while [ $(ls -1 /mnt/drain-done | wc -l) -lt ` + processCount + ` ]; do sleep 5; done
+	touch /mnt/drain-stamps/` + container.Name + `
+	while [ $(ls -1 /mnt/drain-stamps | wc -l) -lt ` + processCount + ` ]; do sleep 5; done
 	exit "$e"
 }
 s="` + drainScript + `"
