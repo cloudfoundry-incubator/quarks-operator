@@ -226,38 +226,35 @@ shopt -s nullglob
 waitExit() {
 	e="$1"
 	touch /mnt/drain-stamps/` + container.Name + `
+	echo "Waiting for other drain scripts to finish."
 	while [ $(ls -1 /mnt/drain-stamps | wc -l) -lt ` + processCount + ` ]; do sleep 5; done
 	exit "$e"
 }
 s="` + drainScript + `"
-(
-	if [ ! -x "$s" ]; then
+if [ ! -x "$s" ]; then
+	waitExit 0
+fi
+echo "Running drain script $s"
+while true; do
+	out=$( $s )
+	status=$?
+
+	if [ "$status" -ne "0" ]; then
+		echo "$s FAILED with exit code $status"
+		waitExit $status
+	fi
+
+	if [ "$out" -lt "0" ]; then
+		echo "Sleeping dynamic draining wait time for $s..."
+		sleep ${out:1}
+		echo "Running $s again"
+	else
+		echo "Sleeping static draining wait time for $s..."
+		sleep $out
+		echo "$s done"
 		waitExit 0
 	fi
-        echo "Running drain script $s"
-        while true; do
-                out=$($s)
-                status=$?
-
-                if [ "$status" -ne "0" ]; then
-                        echo "$s FAILED with exit code $status"
-                        waitExit $status
-                fi
-
-                if [ "$out" -lt "0" ]; then
-                        echo "Sleeping dynamic draining wait time for $s..."
-                        sleep ${out:1}
-                        echo "Running $s again"
-                else
-                        echo "Sleeping static draining wait time for $s..."
-                        sleep $out
-                        echo "$s done"
-                        waitExit 0
-                fi
-        done
-)&
-echo "Waiting for subprocesses to finish..."
-wait
+done
 echo "Done"`,
 			},
 		},
