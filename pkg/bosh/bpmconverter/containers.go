@@ -256,7 +256,6 @@ s="` + drainScript + `"
                 fi
         done
 )&
-done
 echo "Waiting for subprocesses to finish..."
 wait
 echo "Done"`,
