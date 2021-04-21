@@ -26,7 +26,7 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'pr-test-queue')
 
     steps:
-      - uses: actions-ecosystem/action-remove-labels@556e306
+      - uses: actions-ecosystem/action-remove-labels@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           labels: pr-test-queue
@@ -195,10 +195,10 @@ jobs:
         git config user.email "no-reply@quarks.cloudfoundry.org"
         git config user.name "$GITHUB_ACTOR"
     - name: Create k8s Kind Cluster
-      uses: engineerd/setup-kind@0.5.0
+      uses: engineerd/setup-kind@v0.5.0
       with:
        config: .github/kind-config.yaml
-       version: v0.7.0
+       version: v0.9.0
        image: kindest/node:${{matrix.kubernetes_version}}
 
     - name: Run cluster tests
