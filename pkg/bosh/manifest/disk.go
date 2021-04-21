@@ -14,6 +14,7 @@ type Disk struct {
 }
 
 // Disks represents a slice of BPMResourceDisk.
+// Part of the BOSH manifest at '<instance-group>.env.bosh.agent.settings.disks'.
 type Disks []Disk
 
 // MatchesFilter returns true if the disk matches the filter with one of its Filters.
