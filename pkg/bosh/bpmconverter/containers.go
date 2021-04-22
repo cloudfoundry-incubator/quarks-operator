@@ -29,7 +29,17 @@ func (c *ContainerFactoryImpl) JobsToContainers(
 	}
 
 	// wait for that many drain stamps to appear
-	drainStampCount := strconv.Itoa(len(jobs))
+	n := 0
+	for _, job := range jobs {
+		bpmConfig, ok := c.bpmConfigs[job.Name]
+		if !ok {
+			return nil, errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs", job.Name)
+		}
+		if len(bpmConfig.Processes) > 0 {
+			n++
+		}
+	}
+	drainStampCount := strconv.Itoa(n)
 
 	// each job can produce multiple BPM process containers
 	for _, job := range jobs {
@@ -41,6 +51,10 @@ func (c *ContainerFactoryImpl) JobsToContainers(
 		bpmConfig, ok := c.bpmConfigs[job.Name]
 		if !ok {
 			return nil, errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs", job.Name)
+		}
+		if len(bpmConfig.Processes) < 1 {
+			// we won't create any containers for this job
+			continue
 		}
 
 		jobDisks := bpmDisks.Filter("job_name", job.Name)
