@@ -32,7 +32,7 @@ require (
 	go.uber.org/zap v1.16.0
 	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
 	gomodules.xyz/jsonpatch/v2 v2.1.0
-	gopkg.in/yaml.v2 v2.3.0
+	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.20.4
 	k8s.io/apiextensions-apiserver v0.20.4
 	k8s.io/apimachinery v0.20.4
