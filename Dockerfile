@@ -11,7 +11,7 @@ ENV GO111MODULE on
 RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o "/usr/local/bin/container-run" code.cloudfoundry.org/quarks-container-run/cmd
 
 ################################################################################
-FROM golang:1.15.1 AS build
+FROM golang:1.16.3 AS build
 ARG GOPROXY
 ENV GOPROXY $GOPROXY
 
