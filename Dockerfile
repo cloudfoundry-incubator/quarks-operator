@@ -2,13 +2,12 @@ ARG BASE_IMAGE=registry.opensuse.org/cloud/platform/quarks/sle_15_sp1/quarks-ope
 
 
 ################################################################################
-FROM golang:1.13.15 AS containerrun
+FROM golang:1.16.3 AS containerrun
 ARG GOPROXY
 ENV GOPROXY $GOPROXY
 
-ENV GO111MODULE on
-
-RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o "/usr/local/bin/container-run" code.cloudfoundry.org/quarks-container-run/cmd
+RUN CGO_ENABLED=0  go install -ldflags="-s -w" code.cloudfoundry.org/quarks-container-run/cmd@v0.0.3
+RUN mv /go/bin/cmd /usr/local/bin/container-run
 
 ################################################################################
 FROM golang:1.16.3 AS build
