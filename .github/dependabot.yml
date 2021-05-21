@@ -1,0 +1,10 @@
+version: 2
+updates:
+- package-ecosystem: gomod
+  directory: "/"
+  schedule:
+    interval: weekly
+    time: "11:00"
+  ignore:
+  - dependency-name: github.com/onsi/gomega
+  - dependency-name: github.com/spf13/afero
