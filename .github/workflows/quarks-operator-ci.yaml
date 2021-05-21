@@ -50,7 +50,10 @@ jobs:
     runs-on: ubuntu-16.04
 
     # Cannot run for pushes in forked repos, without adapting this workflow
-    if: github.repository == 'cloudfoundry-incubator/quarks-operator'
+    # dependabots pushes directly now, but needs PR review since secrets are missing
+    if: >
+      github.repository == 'cloudfoundry-incubator/quarks-operator' &&
+      !contains(["dependabot"], "${{ github.actor }}")
 
     steps:
     - name: Set up Go
