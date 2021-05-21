@@ -8,13 +8,14 @@ require (
 	github.com/SUSE/go-patch v0.3.0
 	github.com/bmatcuk/doublestar v1.1.1 // indirect
 	github.com/charlievieth/fs v0.0.0-20170613215519-7dc373669fa1 // indirect
-	github.com/cloudfoundry/bosh-cli v5.4.0+incompatible
+	github.com/cloudfoundry/bosh-cli v5.5.1+incompatible
 	github.com/cloudfoundry/bosh-utils v0.0.0-20190206192830-9a0affed2bf1 // indirect
 	github.com/cppforlife/go-patch v0.2.0 // indirect
 	github.com/daaku/go.zipexe v1.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/go-logr/logr v0.3.0
 	github.com/go-test/deep v1.0.7
+	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/gonvenience/bunt v1.1.4
 	github.com/hpcloud/tail v1.0.0
 	github.com/imdario/mergo v0.3.11
@@ -30,8 +31,12 @@ require (
 	github.com/spf13/viper v1.7.1
 	github.com/viovanov/bosh-template-go v0.0.0-20200416144406-32ddfa4afdb0
 	go.uber.org/zap v1.16.0
+	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a // indirect
+	golang.org/x/net v0.0.0-20210510120150-4163338589ed // indirect
 	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
+	golang.org/x/sys v0.0.0-20210514084401-e8d321eab015 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.1.0
+	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/api v0.20.4
 	k8s.io/apiextensions-apiserver v0.20.4
