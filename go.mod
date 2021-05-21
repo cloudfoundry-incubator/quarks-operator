@@ -31,7 +31,7 @@ require (
 	github.com/viovanov/bosh-template-go v0.0.0-20200416144406-32ddfa4afdb0
 	go.uber.org/zap v1.16.0
 	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
-	gomodules.xyz/jsonpatch/v2 v2.1.0
+	gomodules.xyz/jsonpatch/v2 v2.2.0
 	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/api v0.20.4
 	k8s.io/apiextensions-apiserver v0.20.4
