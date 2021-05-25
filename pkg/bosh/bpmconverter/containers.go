@@ -28,6 +28,20 @@ func (c *ContainerFactoryImpl) JobsToContainers(
 		return nil, errors.Errorf("instance group '%s' has no jobs defined", c.instanceGroupName)
 	}
 
+	// wait for that many drain stamps to appear
+	n := 0
+	for _, job := range jobs {
+		bpmConfig, ok := c.bpmConfigs[job.Name]
+		if !ok {
+			return nil, errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs", job.Name)
+		}
+		if len(bpmConfig.Processes) > 0 {
+			n++
+		}
+	}
+	drainStampCount := strconv.Itoa(n)
+
+	// each job can produce multiple BPM process containers
 	for _, job := range jobs {
 		jobImage, err := c.releaseImageProvider.GetReleaseImage(c.instanceGroupName, job.Name)
 		if err != nil {
@@ -37,6 +51,10 @@ func (c *ContainerFactoryImpl) JobsToContainers(
 		bpmConfig, ok := c.bpmConfigs[job.Name]
 		if !ok {
 			return nil, errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs", job.Name)
+		}
+		if len(bpmConfig.Processes) < 1 {
+			// we won't create any containers for this job
+			continue
 		}
 
 		jobDisks := bpmDisks.Filter("job_name", job.Name)
@@ -54,10 +72,12 @@ func (c *ContainerFactoryImpl) JobsToContainers(
 		}
 
 		for processIndex, process := range bpmConfig.Processes {
+			// extra volume mounts for this container
 			processDisks := jobDisks.Filter("process_name", process.Name)
+			volumeMounts := deduplicateVolumeMounts(proccessVolumentMounts(defaultVolumeMounts, processDisks, ephemeralMount, persistentDiskMount))
 
 			// The post-start script should be executed only once per job, so we set it up in the first
-			// process container.
+			// process container. (container-run wrapper)
 			var postStart postStart
 			if processIndex == 0 {
 				conditionProperty := bpmConfig.PostStart.Condition
@@ -73,20 +93,32 @@ func (c *ContainerFactoryImpl) JobsToContainers(
 				}
 			}
 
+			// each bpm process gets one container
 			container, err := bpmProcessContainer(
 				job.Name,
 				process.Name,
 				jobImage,
 				process,
-				proccessVolumentMounts(defaultVolumeMounts, processDisks, ephemeralMount, persistentDiskMount),
+				volumeMounts,
 				bpmConfig.Run.HealthCheck,
 				job.Properties.Quarks.Envs,
 				bpmConfig.Run.SecurityContext.DeepCopy(),
 				postStart,
-				strconv.Itoa(len(bpmConfig.Processes)),
 			)
 			if err != nil {
 				return []corev1.Container{}, err
+			}
+
+			// Setup the job drain script handler, on the first bpm
+			// container. There is only one BOSH drain script per
+			// job.
+			// Theoretically that container might be missing
+			// proccessVolumentMounts for the job's drain script.
+			if processIndex == 0 {
+				container.Lifecycle.PreStop = newDrainScript(job.Name, drainStampCount)
+			} else {
+				// all the other containers also should not terminate
+				container.Lifecycle.PreStop = newDrainWait(drainStampCount)
 			}
 
 			containers = append(containers, *container.DeepCopy())
@@ -136,6 +168,8 @@ type postStartCmd struct {
 	Name string
 	Arg  []string
 }
+
+// postStart controls the --post-start-* feature of the container-run wrapper
 type postStart struct {
 	command, condition *postStartCmd
 }
@@ -150,7 +184,6 @@ func bpmProcessContainer(
 	quarksEnvs []corev1.EnvVar,
 	securityContext *corev1.SecurityContext,
 	postStart postStart,
-	processCount string,
 ) (corev1.Container, error) {
 	name := names.Sanitize(fmt.Sprintf("%s-%s", jobName, processName))
 
@@ -201,66 +234,16 @@ func bpmProcessContainer(
 	container := corev1.Container{
 		Name:            names.Sanitize(name),
 		Image:           jobImage,
-		VolumeMounts:    deduplicateVolumeMounts(volumeMounts),
+		VolumeMounts:    volumeMounts,
 		Command:         command,
 		Args:            args,
 		Env:             newEnvs,
+		Lifecycle:       &corev1.Lifecycle{},
 		WorkingDir:      workdir,
 		SecurityContext: securityContext,
-		Lifecycle:       &corev1.Lifecycle{},
 		Resources: corev1.ResourceRequirements{
 			Requests: process.Requests,
 			Limits:   limits,
-		},
-	}
-
-	// Setup the job drain script handler.
-	drainScript := filepath.Join(VolumeJobsDirMountPath, jobName, "bin", "drain")
-	container.Lifecycle.PreStop = &corev1.Handler{
-		Exec: &corev1.ExecAction{
-			Command: []string{
-				"/bin/sh",
-				"-c",
-				`
-shopt -s nullglob
-waitExit() {
-	e="$1"
-	touch /mnt/drain-done/` + container.Name + `
-	while [ $(ls -1 /mnt/drain-done | wc -l) -lt ` + processCount + ` ]; do sleep 5; done
-	exit "$e"
-}
-s="` + drainScript + `"
-(
-	if [ ! -x "$s" ]; then
-		waitExit 0
-	fi
-        echo "Running drain script $s"
-        while true; do
-                out=$($s)
-                status=$?
-
-                if [ "$status" -ne "0" ]; then
-                        echo "$s FAILED with exit code $status"
-                        waitExit $status
-                fi
-
-                if [ "$out" -lt "0" ]; then
-                        echo "Sleeping dynamic draining wait time for $s..."
-                        sleep ${out:1}
-                        echo "Running $s again"
-                else
-                        echo "Sleeping static draining wait time for $s..."
-                        sleep $out
-                        echo "$s done"
-                        waitExit 0
-                fi
-        done
-)&
-done
-echo "Waiting for subprocesses to finish..."
-wait
-echo "Done"`,
-			},
 		},
 	}
 
@@ -313,4 +296,68 @@ func generateBPMCommand(
 	args = append(args, process.Args...)
 
 	return command, args
+}
+
+func newDrainScript(jobName string, processCount string) *corev1.Handler {
+	drainScript := filepath.Join(VolumeJobsDirMountPath, jobName, "bin", "drain")
+	return &corev1.Handler{
+		Exec: &corev1.ExecAction{
+			Command: []string{
+				"/bin/sh",
+				"-c",
+				`
+shopt -s nullglob
+waitExit() {
+	e="$1"
+	touch /mnt/drain-stamps/` + jobName + `
+	echo "Waiting for other drain scripts to finish."
+	while [ $(ls -1 /mnt/drain-stamps | wc -l) -lt ` + processCount + ` ]; do sleep 5; done
+	exit "$e"
+}
+s="` + drainScript + `"
+if [ ! -x "$s" ]; then
+	waitExit 0
+fi
+echo "Running drain script $s for ` + jobName + `"
+while true; do
+	out=$( $s )
+	status=$?
+
+	if [ "$status" -ne "0" ]; then
+		echo "$s FAILED with exit code $status"
+		waitExit $status
+	fi
+
+	if [ "$out" -lt "0" ]; then
+		echo "Sleeping dynamic draining wait time for $s..."
+		sleep ${out:1}
+		echo "Running $s again"
+	else
+		echo "Sleeping static draining wait time for $s..."
+		sleep $out
+		echo "$s done"
+		waitExit 0
+	fi
+done
+echo "Done"`,
+			},
+		},
+	}
+}
+
+func newDrainWait(processCount string) *corev1.Handler {
+	return &corev1.Handler{
+		Exec: &corev1.ExecAction{
+			Command: []string{
+				"/bin/sh",
+				"-c",
+				`
+echo "Wait for drain scripts in other containers to finish"
+while [ $(ls -1 /mnt/drain-stamps | wc -l) -lt ` + processCount + ` ]; do sleep 5; done
+exit 0
+echo "Done"
+`,
+			},
+		},
+	}
 }

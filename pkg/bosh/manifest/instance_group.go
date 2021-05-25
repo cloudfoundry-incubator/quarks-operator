@@ -262,7 +262,8 @@ type PreRenderOps struct {
 	InstanceGroup OpsPatches `json:"instanceGroup,omitempty"`
 }
 
-// AgentSettings from BOSH deployment manifest.
+// AgentSettings from BOSH deployment manifest,
+// '<instance-group>.env.bosh.agent.settings'.
 // These annotations and labels are added to kube resources.
 // Affinity & tolerations are added into the pod's definition.
 type AgentSettings struct {
@@ -299,7 +300,8 @@ type Agent struct {
 	Tmpfs    *bool         `json:"tmpfs,omitempty"`
 }
 
-// AgentEnvBoshConfig from BOSH deployment manifest.
+// AgentEnvBoshConfig contains supported settings from the
+// <instance-group>.env.bosh hash of the BOSH deployment manifest.
 type AgentEnvBoshConfig struct {
 	Password              string  `json:"password,omitempty"`
 	KeepRootPassword      string  `json:"keep_root_password,omitempty"`
