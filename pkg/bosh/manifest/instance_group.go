@@ -102,6 +102,11 @@ func (ig *InstanceGroup) NameSanitized() string {
 	return names.Sanitize(ig.Name)
 }
 
+// IsErrand returns true if the  instance group is any kind of BOSH errand
+func (ig *InstanceGroup) IsErrand() bool {
+	return ig.LifeCycle == IGTypeErrand || ig.LifeCycle == IGTypeAutoErrand
+}
+
 // IndexedServiceName constructs an indexed service name. It's used to construct the service
 // names other than the headless service.
 func (ig *InstanceGroup) IndexedServiceName(index int, azIndex int) string {

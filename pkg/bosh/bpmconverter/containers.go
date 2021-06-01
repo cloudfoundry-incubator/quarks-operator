@@ -16,17 +16,24 @@ import (
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
-// JobsToContainers creates a list of Containers for corev1.PodSpec Containers field.
 func (c *ContainerFactoryImpl) JobsToContainers(
 	jobs []bdm.Job,
 	defaultVolumeMounts []corev1.VolumeMount,
 	bpmDisks bdm.Disks,
 ) ([]corev1.Container, error) {
-	var containers []corev1.Container
-
-	if len(jobs) == 0 {
-		return nil, errors.Errorf("instance group '%s' has no jobs defined", c.instanceGroupName)
+	if c.errand {
+		return c.errandsToContainers(jobs, defaultVolumeMounts, bpmDisks)
 	}
+	return c.jobsToContainers(jobs, defaultVolumeMounts, bpmDisks)
+}
+
+// JobsToContainers creates a list of Containers for corev1.PodSpec Containers field.
+func (c *ContainerFactoryImpl) jobsToContainers(
+	jobs []bdm.Job,
+	defaultVolumeMounts []corev1.VolumeMount,
+	bpmDisks bdm.Disks,
+) ([]corev1.Container, error) {
+	var containers []corev1.Container
 
 	// wait for that many drain stamps to appear
 	n := 0
@@ -58,18 +65,7 @@ func (c *ContainerFactoryImpl) JobsToContainers(
 		}
 
 		jobDisks := bpmDisks.Filter("job_name", job.Name)
-
-		var ephemeralMount *corev1.VolumeMount
-		ephemeralDisks := jobDisks.Filter("ephemeral", "true")
-		if len(ephemeralDisks) > 0 {
-			ephemeralMount = ephemeralDisks[0].VolumeMount
-		}
-
-		var persistentDiskMount *corev1.VolumeMount
-		persistentDiskDisks := jobDisks.Filter("persistent", "true")
-		if len(persistentDiskDisks) > 0 {
-			persistentDiskMount = persistentDiskDisks[0].VolumeMount
-		}
+		ephemeralMount, persistentDiskMount := jobDisks.BPMMounts()
 
 		for processIndex, process := range bpmConfig.Processes {
 			// extra volume mounts for this container
@@ -93,17 +89,19 @@ func (c *ContainerFactoryImpl) JobsToContainers(
 				}
 			}
 
+			command, args := generateBPMCommand(job.Name, &process, postStart)
 			// each bpm process gets one container
 			container, err := bpmProcessContainer(
 				job.Name,
 				process.Name,
 				jobImage,
 				process,
+				command,
+				args,
 				volumeMounts,
 				bpmConfig.Run.HealthCheck,
 				job.Properties.Quarks.Envs,
 				bpmConfig.Run.SecurityContext.DeepCopy(),
-				postStart,
 			)
 			if err != nil {
 				return []corev1.Container{}, err
@@ -128,6 +126,72 @@ func (c *ContainerFactoryImpl) JobsToContainers(
 	// When disableLogSidecar is true, it will stop
 	// appending the sidecar, default behaviour is to
 	// colocate it always in the pod.
+	if !c.disableLogSidecar {
+		logsTailer := logsTailerContainer()
+		containers = append(containers, logsTailer)
+	}
+
+	return containers, nil
+}
+
+// errandsToContainers creates k8s.Containers for BOSH Errands
+func (c *ContainerFactoryImpl) errandsToContainers(
+	jobs []bdm.Job,
+	defaultVolumeMounts []corev1.VolumeMount,
+	bpmDisks bdm.Disks,
+) ([]corev1.Container, error) {
+	var containers []corev1.Container
+
+	// each job can produce multiple BPM process containers
+	for _, job := range jobs {
+		jobImage, err := c.releaseImageProvider.GetReleaseImage(c.instanceGroupName, job.Name)
+		if err != nil {
+			return []corev1.Container{}, err
+		}
+
+		bpmConfig, ok := c.bpmConfigs[job.Name]
+		if !ok {
+			return nil, errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs", job.Name)
+		}
+		if len(bpmConfig.Processes) < 1 {
+			// we won't create any containers for this job
+			continue
+		}
+
+		jobDisks := bpmDisks.Filter("job_name", job.Name)
+		ephemeralMount, persistentDiskMount := jobDisks.BPMMounts()
+
+		for _, process := range bpmConfig.Processes {
+			// extra volume mounts for this container
+			processDisks := jobDisks.Filter("process_name", process.Name)
+			volumeMounts := deduplicateVolumeMounts(proccessVolumentMounts(defaultVolumeMounts, processDisks, ephemeralMount, persistentDiskMount))
+
+			command := []string{"/usr/bin/dumb-init", "--"}
+			args := []string{process.Executable}
+			args = append(args, process.Args...)
+
+			// each bpm process gets one container
+			container, err := bpmProcessContainer(
+				job.Name,
+				process.Name,
+				jobImage,
+				process,
+				command,
+				args,
+				volumeMounts,
+				bpmConfig.Run.HealthCheck,
+				job.Properties.Quarks.Envs,
+				bpmConfig.Run.SecurityContext.DeepCopy(),
+			)
+			if err != nil {
+				return []corev1.Container{}, err
+			}
+
+			containers = append(containers, *container.DeepCopy())
+		}
+	}
+
+	// TODO why give an errand a log sidecar, ever?
 	if !c.disableLogSidecar {
 		logsTailer := logsTailerContainer()
 		containers = append(containers, logsTailer)
@@ -179,11 +243,12 @@ func bpmProcessContainer(
 	processName string,
 	jobImage string,
 	process bpm.Process,
+	command []string,
+	args []string,
 	volumeMounts []corev1.VolumeMount,
 	healthChecks map[string]bpm.HealthCheck,
 	quarksEnvs []corev1.EnvVar,
 	securityContext *corev1.SecurityContext,
-	postStart postStart,
 ) (corev1.Container, error) {
 	name := names.Sanitize(fmt.Sprintf("%s-%s", jobName, processName))
 
@@ -206,7 +271,6 @@ func bpmProcessContainer(
 	if workdir == "" {
 		workdir = filepath.Join(VolumeJobsDirMountPath, jobName)
 	}
-	command, args := generateBPMCommand(jobName, &process, postStart)
 
 	limits := corev1.ResourceList{}
 	if process.Limits.Memory != "" {

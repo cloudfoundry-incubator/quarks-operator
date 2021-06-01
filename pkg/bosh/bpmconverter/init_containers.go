@@ -46,18 +46,7 @@ func (c *ContainerFactoryImpl) JobsToInitContainers(
 		}
 
 		jobDisks := bpmDisks.Filter("job_name", job.Name)
-
-		var ephemeralMount *corev1.VolumeMount
-		ephemeralDisks := jobDisks.Filter("ephemeral", "true")
-		if len(ephemeralDisks) > 0 {
-			ephemeralMount = ephemeralDisks[0].VolumeMount
-		}
-
-		var persistentDiskMount *corev1.VolumeMount
-		persistentDiskDisks := jobDisks.Filter("persistent", "true")
-		if len(persistentDiskDisks) > 0 {
-			persistentDiskMount = persistentDiskDisks[0].VolumeMount
-		}
+		ephemeralMount, persistentDiskMount := jobDisks.BPMMounts()
 
 		for _, process := range bpmConfig.Processes {
 			if process.Hooks.PreStart != "" {
@@ -86,17 +75,26 @@ func (c *ContainerFactoryImpl) JobsToInitContainers(
 		boshPreStartInitContainers = append(boshPreStartInitContainers, *boshPreStartInitContainer.DeepCopy())
 	}
 
-	initContainers := flattenContainers(
-		containerRunCopier(),
-		copyingSpecsInitContainers,
-		templateRenderingContainer(c.instanceGroupName, c.version == "1"),
-		createDirContainer(jobs, c.instanceGroupName),
-		createWaitContainer(requiredService),
-		boshPreStartInitContainers,
-		bpmPreStartInitContainers,
-	)
+	cs := copyingSpecsInitContainers
+	cs = append(cs, templateRenderingContainer(c.instanceGroupName, c.version == "1"))
+	cs = append(cs, createDirContainer(jobs, c.instanceGroupName))
+	cs = append(cs, createWaitContainer(requiredService)...)
+	cs = append(cs, boshPreStartInitContainers...)
+	cs = append(cs, bpmPreStartInitContainers...)
 
-	return initContainers, nil
+	if c.errand {
+		return cs, nil
+	}
+
+	cs = prependContainer(cs, containerRunCopier())
+	return cs, nil
+}
+
+func prependContainer(l []corev1.Container, c corev1.Container) []corev1.Container {
+	l = append(l, corev1.Container{})
+	copy(l[1:], l)
+	l[0] = c
+	return l
 }
 
 func createWaitContainer(requiredService *string) []corev1.Container {
@@ -113,7 +111,6 @@ func createWaitContainer(requiredService *string) []corev1.Container {
 			fmt.Sprintf("time quarks-operator util wait %s", *requiredService),
 		},
 	}}
-
 }
 
 func containerRunCopier() corev1.Container {
@@ -315,29 +312,4 @@ func bpmPreStartInitContainer(
 		},
 		SecurityContext: securityContext,
 	}
-}
-
-// flattenContainers will flatten the containers parameter. Each argument passed to
-// flattenContainers should be a corev1.Container or []corev1.Container. The final
-// []corev1.Container creation is optimized to prevent slice re-allocation.
-func flattenContainers(containers ...interface{}) []corev1.Container {
-	var totalLen int
-	for _, instance := range containers {
-		switch v := instance.(type) {
-		case []corev1.Container:
-			totalLen += len(v)
-		case corev1.Container:
-			totalLen++
-		}
-	}
-	result := make([]corev1.Container, 0, totalLen)
-	for _, instance := range containers {
-		switch v := instance.(type) {
-		case []corev1.Container:
-			result = append(result, v...)
-		case corev1.Container:
-			result = append(result, v)
-		}
-	}
-	return result
 }

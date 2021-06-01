@@ -46,6 +46,7 @@ const (
 // ContainerFactoryImpl is a concrete implementation of ContainerFactor.
 type ContainerFactoryImpl struct {
 	instanceGroupName    string
+	errand               bool
 	version              string
 	disableLogSidecar    bool
 	releaseImageProvider bdm.ReleaseImageProvider
@@ -53,9 +54,10 @@ type ContainerFactoryImpl struct {
 }
 
 // NewContainerFactory returns a concrete implementation of ContainerFactory.
-func NewContainerFactory(instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs) *ContainerFactoryImpl {
+func NewContainerFactory(igName string, errand bool, version string, disableLogSidecar bool, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs) ContainerFactory {
 	return &ContainerFactoryImpl{
-		instanceGroupName:    instanceGroupName,
+		instanceGroupName:    igName,
+		errand:               errand,
 		version:              version,
 		disableLogSidecar:    disableLogSidecar,
 		releaseImageProvider: releaseImageProvider,
