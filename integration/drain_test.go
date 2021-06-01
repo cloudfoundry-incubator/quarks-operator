@@ -12,9 +12,14 @@ import (
 var _ = Describe("Drain", func() {
 	var (
 		boshDeployment bdv1.BOSHDeployment
+		tearDowns      []machine.TearDownFunc
 	)
 	BeforeEach(func() {
 		boshDeployment = env.DefaultBOSHDeployment("test", "manifest")
+	})
+
+	AfterEach(func() {
+		Expect(env.TearDownAll(tearDowns)).To(Succeed())
 	})
 
 	When("deleting the deployment", func() {
@@ -22,11 +27,11 @@ var _ = Describe("Drain", func() {
 			cm := env.BOSHManifestConfigMap("manifest", bm.Drains)
 			tearDown, err := env.CreateConfigMap(env.Namespace, cm)
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, boshDeployment)
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			By("checking for instance group pods")
 			err = env.WaitForInstanceGroup(env.Namespace, "test", "drains", 1)

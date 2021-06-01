@@ -13,6 +13,12 @@ import (
 )
 
 var _ = Describe("when testing tail-logs subcommand", func() {
+	var tearDowns []machine.TearDownFunc
+
+	AfterEach(func() {
+		Expect(env.TearDownAll(tearDowns)).To(Succeed())
+	})
+
 	Context("subcommand must be working", func() {
 		podName := "test-pod-bar-foo"
 		parentCName := "fake-nats"
@@ -29,7 +35,7 @@ var _ = Describe("when testing tail-logs subcommand", func() {
 
 			tearDown, err := env.CreatePod(env.Namespace, testPod)
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			err = env.WaitForPod(env.Namespace, podName)
 			Expect(err).NotTo(HaveOccurred())
@@ -55,7 +61,7 @@ var _ = Describe("when testing tail-logs subcommand", func() {
 
 			tearDown, err := env.CreatePod(env.Namespace, testPod)
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			err = env.WaitForPod(env.Namespace, podName)
 			Expect(err).NotTo(HaveOccurred())
@@ -80,7 +86,7 @@ var _ = Describe("when testing tail-logs subcommand", func() {
 
 			tearDown, err := env.CreatePod(env.Namespace, testPod)
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			err = env.WaitForPod(env.Namespace, podName)
 			Expect(err).NotTo(HaveOccurred())
@@ -100,7 +106,7 @@ var _ = Describe("when testing tail-logs subcommand", func() {
 
 			tearDown, err := env.CreatePod(env.Namespace, testPod)
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			err = env.WaitForPod(env.Namespace, podName)
 			Expect(err).NotTo(HaveOccurred())
@@ -120,7 +126,7 @@ var _ = Describe("when testing tail-logs subcommand", func() {
 
 			tearDown, err := env.CreatePod(env.Namespace, testPod)
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			err = env.WaitForPod(env.Namespace, podName)
 			Expect(err).NotTo(HaveOccurred())
@@ -131,7 +137,6 @@ var _ = Describe("when testing tail-logs subcommand", func() {
 			time.Sleep(1 * time.Minute)
 			err = env.WaitForPodContainerLogMsg(env.Namespace, podName, sidecarCName, "running logrotate")
 			Expect(err).NotTo(HaveOccurred())
-
 		})
 	})
 })
