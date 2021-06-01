@@ -176,7 +176,7 @@ var _ = Describe("BDPL updates", func() {
 				Expect(err).NotTo(HaveOccurred(), "error retrieving clusterIP service")
 
 				tearDown, err := env.CreateService(env.Namespace, env.NodePortService("nats-service", "nats", svc.Spec.Ports[0].Port))
-				defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+				tearDowns = append(tearDowns, tearDown)
 				Expect(err).NotTo(HaveOccurred(), "error creating service")
 
 				service, err := env.GetService(env.Namespace, "nats-service")
@@ -554,11 +554,11 @@ var _ = Describe("BDPL updates", func() {
 			manifestName := "bosh-manifest-two-instance-groups"
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap("fooconfigmap", bm.BOSHManifestWithTwoInstanceGroups))
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment(manifestName, "fooconfigmap"))
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			By("checking for nats instance group pods")
 			err = env.WaitForInstanceGroup(env.Namespace, manifestName, "nats", 2)
