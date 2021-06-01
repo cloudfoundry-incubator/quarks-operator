@@ -20,7 +20,7 @@ import (
 
 var _ = Describe("ContainerFactory", func() {
 	var (
-		containerFactory     *ContainerFactoryImpl
+		containerFactory     ContainerFactory
 		bpmConfigs           bpm.Configs
 		releaseImageProvider *fakes.FakeReleaseImageProvider
 		jobs                 []bdm.Job
@@ -165,7 +165,7 @@ var _ = Describe("ContainerFactory", func() {
 	})
 
 	JustBeforeEach(func() {
-		containerFactory = NewContainerFactory("fake-ig", "v1", false, releaseImageProvider, bpmConfigs)
+		containerFactory = NewContainerFactory("fake-ig", false, "v1", false, releaseImageProvider, bpmConfigs)
 	})
 
 	Context("JobsToContainers", func() {
@@ -320,7 +320,7 @@ var _ = Describe("ContainerFactory", func() {
 					},
 				},
 			}
-			containerFactory = NewContainerFactory("fake-ig", "v1", false, releaseImageProvider, bpmConfigsWithError)
+			containerFactory = NewContainerFactory("fake-ig", false, "v1", false, releaseImageProvider, bpmConfigsWithError)
 			actWithError := func() ([]corev1.Container, error) {
 				return containerFactory.JobsToContainers(jobs, []corev1.VolumeMount{}, bdm.Disks{})
 			}
@@ -366,13 +366,6 @@ var _ = Describe("ContainerFactory", func() {
 			containers, err := act()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(containers[1].Env).To(HaveLen(5))
-		})
-
-		It("handles an error when jobs is empty", func() {
-			jobs = []bdm.Job{}
-			_, err := act()
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("instance group 'fake-ig' has no jobs defined"))
 		})
 
 		It("handles an error when getting release image fails", func() {
@@ -552,7 +545,7 @@ var _ = Describe("ContainerFactory", func() {
 
 				disableSideCar := ig.Env.AgentEnvBoshConfig.Agent.Settings.DisableLogSidecar
 
-				containerFactory := NewContainerFactory(ig.Name, "v1", disableSideCar, releaseImageProvider, bpmJobConfigs)
+				containerFactory := NewContainerFactory(ig.Name, false, "v1", disableSideCar, releaseImageProvider, bpmJobConfigs)
 				act := func() ([]corev1.Container, error) {
 					return containerFactory.JobsToContainers(ig.Jobs, []corev1.VolumeMount{}, bdm.Disks{})
 				}
@@ -579,7 +572,7 @@ var _ = Describe("ContainerFactory", func() {
 
 				disableSideCar := ig.Env.AgentEnvBoshConfig.Agent.Settings.DisableLogSidecar
 
-				containerFactory := NewContainerFactory(ig.Name, "v1", disableSideCar, releaseImageProvider, bpmJobConfigs)
+				containerFactory := NewContainerFactory(ig.Name, false, "v1", disableSideCar, releaseImageProvider, bpmJobConfigs)
 				act := func() ([]corev1.Container, error) {
 					return containerFactory.JobsToContainers(ig.Jobs, []corev1.VolumeMount{}, bdm.Disks{})
 				}

@@ -38,7 +38,7 @@ var _ = Describe("BPM Converter", func() {
 		act := func(bpmConfigs bpm.Configs, instanceGroup *manifest.InstanceGroup) (*bpmconverter.Resources, error) {
 			c := bpmconverter.NewConverter(
 				volumeFactory,
-				func(instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider manifest.ReleaseImageProvider, bpmConfigs bpm.Configs) bpmconverter.ContainerFactory {
+				func(igName string, errand bool, version string, disableLogSidecar bool, releaseImageProvider manifest.ReleaseImageProvider, bpmConfigs bpm.Configs) bpmconverter.ContainerFactory {
 					return containerFactory
 				})
 			resources, err := c.Resources(*m, "foo", deploymentName, "1.2.3.4", "1", instanceGroup, bpmConfigs, "1")
@@ -599,6 +599,7 @@ var _ = Describe("BPM Converter", func() {
 					containers := resources.Errands[0].Spec.Template.Spec.Template.Spec.Containers
 
 					// Test shared volume setup
+					Expect(containers).To(HaveLen(1))
 					Expect(containers[0].VolumeMounts[0].Name).To(Equal("fake-volume-name"))
 					Expect(containers[0].VolumeMounts[0].MountPath).To(Equal("fake-mount-path"))
 				})
@@ -615,9 +616,10 @@ var _ = Describe("BPM Converter", func() {
 
 					c := bpmconverter.NewConverter(
 						bpmconverter.NewVolumeFactory(),
-						func(instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider manifest.ReleaseImageProvider, bpmConfigs bpm.Configs) bpmconverter.ContainerFactory {
+						func(igName string, errand bool, version string, disableLogSidecar bool, releaseImageProvider manifest.ReleaseImageProvider, bpmConfigs bpm.Configs) bpmconverter.ContainerFactory {
 							return bpmconverter.NewContainerFactory(
-								instanceGroupName,
+								igName,
+								false,
 								"1",
 								true,
 								releaseImageProvider,

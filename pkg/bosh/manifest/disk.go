@@ -70,3 +70,20 @@ func (disks Disks) PVCs() []corev1.PersistentVolumeClaim {
 	}
 	return pvcs
 }
+
+// BPMMounts returns the volume mounts for the containers
+func (disks Disks) BPMMounts() (*corev1.VolumeMount, *corev1.VolumeMount) {
+	var ephemeralMount *corev1.VolumeMount
+	ephemeralDisks := disks.Filter("ephemeral", "true")
+	if len(ephemeralDisks) > 0 {
+		ephemeralMount = ephemeralDisks[0].VolumeMount
+	}
+
+	var persistentDiskMount *corev1.VolumeMount
+	persistentDiskDisks := disks.Filter("persistent", "true")
+	if len(persistentDiskDisks) > 0 {
+		persistentDiskMount = persistentDiskDisks[0].VolumeMount
+	}
+
+	return ephemeralMount, persistentDiskMount
+}

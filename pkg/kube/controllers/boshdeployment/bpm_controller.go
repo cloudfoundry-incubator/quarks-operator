@@ -36,7 +36,7 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 		ctx, config, mgr,
 		desiredmanifest.NewDesiredManifest(mgr.GetClient()),
 		controllerutil.SetControllerReference,
-		bpmconverter.NewConverter(bpmconverter.NewVolumeFactory(), bpmconverter.NewContainerFactoryImplFunc),
+		bpmconverter.NewConverter(bpmconverter.NewVolumeFactory(), bpmconverter.NewContainerFactory),
 	)
 
 	// Create a new controller
