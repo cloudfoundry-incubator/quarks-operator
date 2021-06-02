@@ -14,6 +14,12 @@ import (
 )
 
 var _ = Describe("DeployWithStorage", func() {
+	var tearDowns []machine.TearDownFunc
+
+	AfterEach(func() {
+		Expect(env.TearDownAll(tearDowns)).To(Succeed())
+	})
+
 	Context("when using multiple processes in BPM", func() {
 		It("should add multiple containers to a pod", func() {
 			By("Creating a secret for implicit variable")
@@ -22,18 +28,18 @@ var _ = Describe("DeployWithStorage", func() {
 
 			tearDown, err := env.CreateSecret(env.Namespace, env.StorageClassSecret("var-operator-test-storage-class", storageClass))
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			tearDown, err = env.CreateConfigMap(env.Namespace, corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{Name: "bpm-manifest"},
 				Data:       map[string]string{"manifest": bm.BPMRelease},
 			})
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("test-bdpl", "bpm-manifest"))
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			By("checking for instance group pods")
 			err = env.WaitForInstanceGroup(env.Namespace, "test-bdpl", "bpm", 1)
@@ -77,15 +83,15 @@ var _ = Describe("DeployWithStorage", func() {
 
 			tearDown, err := env.CreateSecret(env.Namespace, env.StorageClassSecret("var-operator-test-storage-class", storageClass))
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			tearDown, err = env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap("bpm-affinity", bm.BPMReleaseWithAffinity))
 			Expect(err).NotTo(HaveOccurred(), "error creating configMap")
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("bpm-affinity", "bpm-affinity"))
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			By("checking for pod")
 			err = env.WaitForInstanceGroup(env.Namespace, "bpm-affinity", "bpm1", 2)

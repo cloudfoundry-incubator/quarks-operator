@@ -41,12 +41,7 @@ type ContainerFactory interface {
 }
 
 // NewContainerFactoryFunc returns ContainerFactory from single BOSH instance group.
-type NewContainerFactoryFunc func(instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs) ContainerFactory
-
-// NewContainerFactoryImplFunc returns a ContainerFactoryImpl
-func NewContainerFactoryImplFunc(instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs) ContainerFactory {
-	return NewContainerFactory(instanceGroupName, version, disableLogSidecar, releaseImageProvider, bpmConfigs)
-}
+type NewContainerFactoryFunc func(instanceGroupName string, errand bool, version string, disableLogSidecar bool, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs) ContainerFactory
 
 // VolumeFactory builds Kubernetes containers from BOSH jobs.
 type VolumeFactory interface {
@@ -90,6 +85,10 @@ func FilterLabels(labels map[string]string) map[string]string {
 // Resources uses BOSH Process Manager information to create k8s container specs from single BOSH instance group.
 // It returns quarks stateful sets, services and quarks jobs.
 func (kc *BPMConverter) Resources(manifest bdm.Manifest, namespace string, deploymentName string, serviceIP string, qStsVersion string, instanceGroup *bdm.InstanceGroup, bpmConfigs bpm.Configs, igResolvedSecretVersion string) (*Resources, error) {
+	if len(instanceGroup.Jobs) == 0 {
+		return nil, errors.Errorf("instance group '%s' has no jobs defined", instanceGroup.Name)
+	}
+
 	instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Set(deploymentName, instanceGroup.Name, qStsVersion)
 
 	defaultDisks := kc.volumeFactory.GenerateDefaultDisks(instanceGroup, igResolvedSecretVersion, namespace)
@@ -109,39 +108,40 @@ func (kc *BPMConverter) Resources(manifest bdm.Manifest, namespace string, deplo
 
 	cfac := kc.newContainerFactoryFunc(
 		instanceGroup.Name,
+		instanceGroup.IsErrand(),
 		igResolvedSecretVersion,
 		instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.DisableLogSidecar,
 		&manifest,
 		bpmConfigs,
 	)
 
-	switch instanceGroup.LifeCycle {
-	case bdm.IGTypeService, "":
-		convertedExtStatefulSet, err := kc.serviceToQuarksStatefulSet(manifest, namespace, cfac, serviceIP, instanceGroup, defaultDisks, bpmDisks, bpmConfigs.ActivePassiveProbes())
+	if instanceGroup.IsErrand() {
+		j, err := kc.quarksJob(manifest, namespace, cfac, serviceIP, instanceGroup, defaultDisks, bpmDisks)
 		if err != nil {
 			return nil, err
 		}
 
-		services := kc.serviceToKubeServices(namespace, deploymentName, instanceGroup, &convertedExtStatefulSet, bpmConfigs)
-		if len(services) != 0 {
-			res.Services = append(res.Services, services...)
-		}
-
-		res.InstanceGroups = append(res.InstanceGroups, convertedExtStatefulSet)
-	case bdm.IGTypeErrand, bdm.IGTypeAutoErrand:
-		convertedQJob, err := kc.errandToQuarksJob(manifest, namespace, cfac, serviceIP, instanceGroup, defaultDisks, bpmDisks)
-		if err != nil {
-			return nil, err
-		}
-
-		res.Errands = append(res.Errands, convertedQJob)
+		res.Errands = append(res.Errands, j)
+		return res, nil
 	}
+
+	qsts, err := kc.quarksStatefulset(manifest, namespace, cfac, serviceIP, instanceGroup, defaultDisks, bpmDisks, bpmConfigs.ActivePassiveProbes())
+	if err != nil {
+		return nil, err
+	}
+
+	services := kc.service(namespace, deploymentName, instanceGroup, &qsts, bpmConfigs)
+	if len(services) != 0 {
+		res.Services = append(res.Services, services...)
+	}
+
+	res.InstanceGroups = append(res.InstanceGroups, qsts)
 
 	return res, nil
 }
 
-// serviceToQuarksStatefulSet will generate an QuarksStatefulSet
-func (kc *BPMConverter) serviceToQuarksStatefulSet(
+// quarksStatefulset create a QuarksStatefulSet for a BOSH instance group
+func (kc *BPMConverter) quarksStatefulset(
 	manifest bdm.Manifest,
 	namespace string,
 	cfac ContainerFactory,
@@ -256,8 +256,8 @@ func (kc *BPMConverter) serviceToQuarksStatefulSet(
 	return extSts, nil
 }
 
-// serviceToKubeServices will generate Services which expose ports for InstanceGroup's jobs
-func (kc *BPMConverter) serviceToKubeServices(namespace string, deploymentName string, instanceGroup *bdm.InstanceGroup, qSts *qstsv1a1.QuarksStatefulSet, bpmConfigs bpm.Configs) []corev1.Service {
+// service creates a k8s services, which exposes the BOSH InstanceGroup's jobs
+func (kc *BPMConverter) service(namespace string, deploymentName string, instanceGroup *bdm.InstanceGroup, qSts *qstsv1a1.QuarksStatefulSet, bpmConfigs bpm.Configs) []corev1.Service {
 	var services []corev1.Service
 	// Collect ports from bpm configs
 	ports := bpmConfigs.ServicePorts()
@@ -324,8 +324,8 @@ func (kc *BPMConverter) serviceToKubeServices(namespace string, deploymentName s
 	return services
 }
 
-// errandToQuarksJob will generate an QuarksJob
-func (kc *BPMConverter) errandToQuarksJob(
+// quarksJob creates a QuarksJob for an errand-type BOSH InstanceGroup
+func (kc *BPMConverter) quarksJob(
 	manifest bdm.Manifest,
 	namespace string,
 	cfac ContainerFactory,
