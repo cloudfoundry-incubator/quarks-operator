@@ -268,13 +268,14 @@ func (kc *BPMConverter) service(namespace string, deploymentName string, instanc
 	isActivePassiveModel := bpmConfigs.IsActivePassiveModel()
 
 	if len(instanceGroup.AZs) > 0 {
-		for azIndex := range instanceGroup.AZs {
+		for azIndex, azName := range instanceGroup.AZs {
 			services = kc.generateServices(
 				services,
 				namespace,
 				deploymentName,
 				*instanceGroup,
 				azIndex,
+				azName,
 				isActivePassiveModel,
 				ports)
 		}
@@ -285,6 +286,7 @@ func (kc *BPMConverter) service(namespace string, deploymentName string, instanc
 			deploymentName,
 			*instanceGroup,
 			-1,
+			"",
 			isActivePassiveModel,
 			ports)
 	}
@@ -440,6 +442,7 @@ func (kc *BPMConverter) generateServices(
 	deploymentName string,
 	instanceGroup bdm.InstanceGroup,
 	azIndex int,
+	azName string,
 	activePassiveModel bool,
 	ports []corev1.ServicePort) []corev1.Service {
 	serviceLabels := func(azIndex, ordinal int, includeActiveSelector bool) map[string]string {
@@ -450,6 +453,7 @@ func (kc *BPMConverter) generateServices(
 			bdv1.LabelDeploymentName:    deploymentName,
 			bdv1.LabelInstanceGroupName: instanceGroup.Name,
 			qstsv1a1.LabelAZIndex:       strconv.Itoa(azIndex),
+			qstsv1a1.LabelAZName:        azName,
 			qstsv1a1.LabelPodOrdinal:    strconv.Itoa(ordinal),
 		}
 		if includeActiveSelector {
@@ -461,7 +465,7 @@ func (kc *BPMConverter) generateServices(
 	for i := 0; i < instanceGroup.Instances; i++ {
 		services = append(services, corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      instanceGroup.IndexedServiceName(i, azIndex),
+				Name:      instanceGroup.IndexedServiceName(i, azIndex, azName),
 				Namespace: namespace,
 				Labels:    serviceLabels(azIndex, i, false),
 			},

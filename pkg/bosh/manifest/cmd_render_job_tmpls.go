@@ -126,7 +126,7 @@ func RenderJobTemplates(
 			}
 
 			// Find job instance that's being rendered
-			currentJobInstance := job.Properties.Quarks.jobInstance(ig.AZs, specIndex)
+			currentJobInstance := job.Properties.Quarks.jobInstance(ig.AZs, azIndex, specIndex)
 			if currentJobInstance == nil {
 				return errors.Errorf("no job instance found for spec index '%d'", specIndex)
 			}
