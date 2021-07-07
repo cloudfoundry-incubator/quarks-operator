@@ -43,14 +43,14 @@ type JobInstance struct {
 	Network   map[string]interface{} `json:"networks"`
 }
 
-func (q Quarks) jobInstance(azs []string, specIndex int) *JobInstance {
+func (q Quarks) jobInstance(azs []string, azIndex int, specIndex int) *JobInstance {
 	for _, instance := range q.Instances {
 		if len(azs) > 0 {
-			for i, az := range azs {
-				if instance.AZ == az {
-					if names.SpecIndex(i+1, instance.Instance) == specIndex {
-						return &instance
-					}
+			instancesPerZone := len(q.Instances) / len(azs)
+			zoneStart := (azIndex - 1) * instancesPerZone
+			if instance.AZ == azs[azIndex-1] && instance.Index >= zoneStart {
+				if names.SpecIndex(azIndex, instance.Instance) == specIndex {
+					return &instance
 				}
 			}
 		} else {

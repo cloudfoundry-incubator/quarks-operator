@@ -16,6 +16,7 @@ require (
 	github.com/go-logr/logr v0.3.0
 	github.com/go-test/deep v1.0.7
 	github.com/gonvenience/bunt v1.1.4
+	github.com/google/uuid v1.2.0 // indirect
 	github.com/hpcloud/tail v1.0.0
 	github.com/imdario/mergo v0.3.11
 	github.com/mattn/go-isatty v0.0.11 // indirect

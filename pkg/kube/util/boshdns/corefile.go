@@ -131,12 +131,13 @@ func gatherAllRewrites(rewrites []string,
 	alias Alias) []string {
 	if target.Query == "_" {
 		if len(instanceGroup.AZs) > 0 {
-			for azIndex := range instanceGroup.AZs {
+			for azIndex, azName := range instanceGroup.AZs {
 				rewrites = gatherRewritesForInstances(rewrites,
 					instanceGroup,
 					target,
 					namespace,
 					azIndex,
+					azName,
 					alias)
 			}
 		} else {
@@ -145,6 +146,7 @@ func gatherAllRewrites(rewrites []string,
 				target,
 				namespace,
 				-1,
+				"",
 				alias)
 		}
 	} else {
@@ -164,16 +166,17 @@ func gatherRewritesForInstances(rewrites []string,
 	target Target,
 	namespace string,
 	azIndex int,
+	azName string,
 	alias Alias) []string {
 	id := ""
 	for i := 0; i < instanceGroup.Instances; i++ {
 		if azIndex > -1 {
-			id = fmt.Sprintf("%s-z%d-%d", target.InstanceGroup, azIndex, i)
+			id = fmt.Sprintf("%s-%s-%d-%d", target.InstanceGroup, azName, azIndex, i)
 		} else {
 			id = fmt.Sprintf("%s-%d", target.InstanceGroup, i)
 		}
 		from := strings.Replace(alias.Domain, "_", id, 1)
-		serviceName := instanceGroup.IndexedServiceName(i, azIndex)
+		serviceName := instanceGroup.IndexedServiceName(i, azIndex, azName)
 		to := fmt.Sprintf("%s.%s.svc.%s", serviceName, namespace, clusterDomain)
 		rewrites = append(rewrites, newTemplate(from, to))
 	}
