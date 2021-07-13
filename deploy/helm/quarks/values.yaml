@@ -89,7 +89,17 @@ global:
     create: true
     # name is  the name of the single namespace, being watched for BOSH deployments.
     name: kubecf
-# Scheduling pod on specicifc nodes by adding labels to nodes
+# Scheduling pod on specific nodes by adding labels to nodes
+# Example
+# affinity:
+#   nodeAffinity:
+#     requiredDuringSchedulingIgnoredDuringExecution:
+#       nodeSelectorTerms:
+#       - matchExpressions:
+#         - key: NODE_LABEL_KEY
+#           operator: In
+#           values: 
+#           - NODE_LABEL_VALUE
 affinity: {}
 
 quarks-job:
@@ -106,14 +116,44 @@ quarks-job:
     name: qjob-persist-output
   singleNamespace:
     createNamespace: false
-  # Scheduling pod on specicifc nodes by adding labels to nodes
+# Scheduling pod on specific nodes by adding labels to nodes
+# Example
+# affinity:
+#   nodeAffinity:
+#     requiredDuringSchedulingIgnoredDuringExecution:
+#       nodeSelectorTerms:
+#       - matchExpressions:
+#         - key: NODE_LABEL_KEY
+#           operator: In
+#           values: 
+#           - NODE_LABEL_VALUE
   affinity: {}
 
 quarks-secret:
   logLevel: info
-  # Scheduling pod on specicifc nodes by adding labels to nodes
+# Scheduling pod on specific nodes by adding labels to nodes
+# Example
+# affinity:
+#   nodeAffinity:
+#     requiredDuringSchedulingIgnoredDuringExecution:
+#       nodeSelectorTerms:
+#       - matchExpressions:
+#         - key: NODE_LABEL_KEY
+#           operator: In
+#           values: 
+#           - NODE_LABEL_VALUE
   affinity: {}
 quarks-statefulset:
   logLevel: info
-  # Scheduling pod on specicifc nodes by adding labels to nodes
+# Scheduling pod on specific nodes by adding labels to nodes
+# Example
+# affinity:
+#   nodeAffinity:
+#     requiredDuringSchedulingIgnoredDuringExecution:
+#       nodeSelectorTerms:
+#       - matchExpressions:
+#         - key: NODE_LABEL_KEY
+#           operator: In
+#           values: 
+#           - NODE_LABEL_VALUE
   affinity: {}
