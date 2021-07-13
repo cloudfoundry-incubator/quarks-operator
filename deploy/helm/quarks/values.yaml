@@ -89,6 +89,8 @@ global:
     create: true
     # name is  the name of the single namespace, being watched for BOSH deployments.
     name: kubecf
+# Scheduling pod on specicifc nodes by adding labels to nodes
+affinity: {}
 
 quarks-job:
   logLevel: info
@@ -104,9 +106,14 @@ quarks-job:
     name: qjob-persist-output
   singleNamespace:
     createNamespace: false
+  # Scheduling pod on specicifc nodes by adding labels to nodes
+  affinity: {}
 
 quarks-secret:
   logLevel: info
-
+  # Scheduling pod on specicifc nodes by adding labels to nodes
+  affinity: {}
 quarks-statefulset:
   logLevel: info
+  # Scheduling pod on specicifc nodes by adding labels to nodes
+  affinity: {}
