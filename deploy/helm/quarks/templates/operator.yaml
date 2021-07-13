@@ -13,6 +13,9 @@ spec:
       labels:
         name: cf-operator
     spec:
+      {{- if .Values.affinity  }}
+      affinity: {{  .Values.affinity | toJson }}
+      {{- end }}
       serviceAccountName: {{ template "cf-operator.serviceAccountName" . }}
       containers:
         - name: quarks-operator

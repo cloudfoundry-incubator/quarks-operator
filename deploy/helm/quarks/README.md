@@ -98,6 +98,7 @@ For more possible parameters look in [`values.yml`](https://github.com/cloudfoun
 | `global.singleNamespace.name`                     | Name of the single watch namespace, that will be watched for BOSH deployment                      | `staging`                                      |
 | `applyCRD`              | If True, the quarks-operator will install the CRD's.                                                                        | `true`
 |
+| `affinity`                     |  Scheduling pod on specicifc nodes by adding labels to nodes                                      | `affinity`
 > **Note:**
 >
 > `global.operator.webhook.useServiceReference` will override `operator.webhook.endpoint` configuration
