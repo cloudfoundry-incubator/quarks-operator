@@ -44,7 +44,7 @@ require (
 
 go 1.16
 
-replace code.cloudfoundry.org/quarks-utils => github.com/HCL-Cloud-Native-Labs/quarks-utils v0.0.2
-replace code.cloudfoundry.org/quarks-statefulset => github.com/HCL-Cloud-Native-Labs/quarks-statefulset v1.0.1320
-replace code.cloudfoundry.org/quarks-job => github.com/HCL-Cloud-Native-Labs/quarks-job v1.0.219
-replace code.cloudfoundry.org/quarks-secret => github.com/HCL-Cloud-Native-Labs/quarks-secret v1.0.761
+replace code.cloudfoundry.org/quarks-utils => github.com/HCL-Cloud-Native-Labs/quarks-utils v0.1.0
+replace code.cloudfoundry.org/quarks-statefulset => github.com/HCL-Cloud-Native-Labs/quarks-statefulset v1.1.0
+replace code.cloudfoundry.org/quarks-job => github.com/HCL-Cloud-Native-Labs/quarks-job v1.1.0
+replace code.cloudfoundry.org/quarks-secret => github.com/HCL-Cloud-Native-Labs/quarks-secret v1.1.0
