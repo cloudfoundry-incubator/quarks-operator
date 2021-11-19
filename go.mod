@@ -43,3 +43,8 @@ require (
 )
 
 go 1.16
+
+replace code.cloudfoundry.org/quarks-utils => /Users/vmansolas/Projects/quarks/code/quarks-utils
+replace code.cloudfoundry.org/quarks-statefulset => /Users/vmansolas/Projects/quarks/code/quarks-statefulset
+replace code.cloudfoundry.org/quarks-job => /Users/vmansolas/Projects/quarks/code/quarks-job
+replace code.cloudfoundry.org/quarks-secret => /Users/vmansolas/Projects/quarks/code/quarks-secret
