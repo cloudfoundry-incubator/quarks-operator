@@ -1,89 +1,66 @@
-apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
+apiVersion: apiextensions.k8s.io/v1
 metadata:
-  creationTimestamp: 2020-04-30T14:32:12Z
-  generation: 1
   name: quarksstatefulsets.quarks.cloudfoundry.org
-  resourceVersion: "2512198"
-  selfLink: /apis/apiextensions.k8s.io/v1beta1/customresourcedefinitions/quarksstatefulsets.quarks.cloudfoundry.org
-  uid: 6a2bac4f-289d-4440-9a2a-c220725668e0
 spec:
-  conversion:
-    strategy: None
   group: quarks.cloudfoundry.org
   names:
+    plural: quarksstatefulsets
+    singular: quarksstatefulset
+    shortNames:
+      - qsts
     kind: QuarksStatefulSet
     listKind: QuarksStatefulSetList
-    plural: quarksstatefulsets
-    shortNames:
-    - qsts
-    singular: quarksstatefulset
-  preserveUnknownFields: false
   scope: Namespaced
-  subresources:
-    status: {}
-  validation:
-    openAPIV3Schema:
-      properties:
-        spec:
-          properties:
-            activePassiveProbes:
-              description: Defines probes to determine active/passive component instances
-              type: object
-              x-kubernetes-preserve-unknown-fields: true
-            template:
-              description: A template for a regular StatefulSet
-              type: object
-              x-kubernetes-preserve-unknown-fields: true
-            updateOnConfigChange:
-              description: Indicate whether to update Pods in the StatefulSet when
-                an env value or mount changes
-              type: boolean
-            injectReplicasEnv:
-              description: Determines if the REPLICAS env var is injected into pod containers.
-                true by default
-              type: boolean
-            zoneNodeLabel:
-              description: Indicates the node label that a node locates
-              type: string
-            zones:
-              description: Indicates the availability zones that the QuarksStatefulSet
-                needs to span
-              items:
-                type: string
-              type: array
-          required:
-          - template
-          type: object
-        status:
-          properties:
-            lastReconcile:
-              type: string
-          type: object
-      type: object
-  version: v1alpha1
   versions:
-  - name: v1alpha1
-    served: true
-    storage: true
-status:
-  acceptedNames:
-    kind: QuarksStatefulSet
-    listKind: QuarksStatefulSetList
-    plural: quarksstatefulsets
-    shortNames:
-    - qsts
-    singular: quarksstatefulset
-  conditions:
-  - lastTransitionTime: 2020-04-30T14:32:12Z
-    message: no conflicts found
-    reason: NoConflicts
-    status: "True"
-    type: NamesAccepted
-  - lastTransitionTime: null
-    message: the initial names have been accepted
-    reason: InitialNamesAccepted
-    status: "True"
-    type: Established
-  storedVersions:
-  - v1alpha1
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - template
+              properties:
+                activePassiveProbes:
+                  description: >-
+                    Defines probes to determine active/passive component
+                    instances
+                  type: object
+                  x-kubernetes-preserve-unknown-fields: true
+                injectReplicasEnv:
+                  description: >-
+                    Determines if the REPLICAS env var is injected into pod
+                    containers.
+                  type: boolean
+                template:
+                  description: A template for a regular StatefulSet
+                  type: object
+                  x-kubernetes-preserve-unknown-fields: true
+                updateOnConfigChange:
+                  description: >-
+                    Indicate whether to update Pods in the StatefulSet when an
+                    env value or mount changes
+                  type: boolean
+                zoneNodeLabel:
+                  description: Indicates the node label that a node locates
+                  type: string
+                zones:
+                  description: >-
+                    Indicates the availability zones that the QuarksStatefulSet
+                    needs to span
+                  type: array
+                  items:
+                    type: string
+            status:
+              type: object
+              properties:
+                lastReconcile:
+                  type: string
+                ready:
+                  type: boolean
+  conversion:
+    strategy: None
